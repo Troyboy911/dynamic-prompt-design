@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { Github, Linkedin, Twitter, Mail, Phone, MapPin } from "lucide-react";
 
 const Footer = () => {
@@ -29,10 +30,10 @@ const Footer = () => {
           <div className="space-y-4">
             <h4 className="text-lg font-semibold">Services</h4>
             <ul className="space-y-2 text-muted-foreground">
-              <li><a href="#" className="hover:text-primary transition-colors">App Development</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Automation Solutions</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Website Development</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">AI Agents</a></li>
+              <li><Link to="/solutions/app-development" className="hover:text-primary transition-colors">App Development</Link></li>
+              <li><Link to="/solutions/automation" className="hover:text-primary transition-colors">Automation Solutions</Link></li>
+              <li><Link to="/solutions/website-development" className="hover:text-primary transition-colors">Website Development</Link></li>
+              <li><Link to="/solutions/ai-agents" className="hover:text-primary transition-colors">AI Agents</Link></li>
             </ul>
           </div>
 

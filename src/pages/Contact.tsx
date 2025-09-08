@@ -117,15 +117,6 @@ const Contact = () => {
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="p-3 rounded-lg bg-primary/10">
-                      <Phone className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">Phone</p>
-                      <p className="text-muted-foreground">+1 (555) 123-4567</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 rounded-lg bg-primary/10">
                       <MapPin className="w-6 h-6 text-primary" />
                     </div>
                     <div>

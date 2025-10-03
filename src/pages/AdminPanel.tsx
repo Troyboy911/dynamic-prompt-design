@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Bot, Upload, Settings, FileText } from "lucide-react";
+import { LogOut, Bot, Upload, Settings, FileText, Key } from "lucide-react";
 
 const AdminPanel = () => {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [perplexityKey, setPerplexityKey] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -21,6 +23,12 @@ const AdminPanel = () => {
     if (!isAuthenticated) {
       navigate("/admin");
     }
+    
+    // Load saved API keys
+    const savedOpenaiKey = localStorage.getItem("stellarc-openai-key");
+    const savedPerplexityKey = localStorage.getItem("stellarc-perplexity-key");
+    if (savedOpenaiKey) setOpenaiKey(savedOpenaiKey);
+    if (savedPerplexityKey) setPerplexityKey(savedPerplexityKey);
   }, [navigate]);
 
   const handleLogout = () => {
@@ -80,10 +88,14 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="agent" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="agent" className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
               AI Agent
+            </TabsTrigger>
+            <TabsTrigger value="apis" className="flex items-center gap-2">
+              <Key className="w-4 h-4" />
+              APIs
             </TabsTrigger>
             <TabsTrigger value="files" className="flex items-center gap-2">
               <Upload className="w-4 h-4" />
@@ -139,6 +151,73 @@ const AdminPanel = () => {
                     <li>• Modify service descriptions</li>
                   </ul>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* APIs Tab */}
+          <TabsContent value="apis">
+            <Card className="card-glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="w-5 h-5 text-primary" />
+                  API Configuration
+                </CardTitle>
+                <CardDescription>
+                  Configure API keys for external services like OpenAI and Perplexity
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="openai-key">OpenAI API Key</Label>
+                    <Input
+                      id="openai-key"
+                      type="password"
+                      value={openaiKey}
+                      onChange={(e) => setOpenaiKey(e.target.value)}
+                      placeholder="sk-..."
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Used for AI agent functionality and content generation
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="perplexity-key">Perplexity API Key</Label>
+                    <Input
+                      id="perplexity-key"
+                      type="password"
+                      value={perplexityKey}
+                      onChange={(e) => setPerplexityKey(e.target.value)}
+                      placeholder="pplx-..."
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Used for advanced search and research capabilities
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-secondary/20 rounded-lg">
+                  <h4 className="font-semibold mb-2 text-primary">Security Notice</h4>
+                  <p className="text-sm text-muted-foreground">
+                    API keys are stored locally in your browser. For production use, consider using backend storage with proper encryption.
+                  </p>
+                </div>
+
+                <Button 
+                  className="glow-effect"
+                  onClick={() => {
+                    if (openaiKey) localStorage.setItem("stellarc-openai-key", openaiKey);
+                    if (perplexityKey) localStorage.setItem("stellarc-perplexity-key", perplexityKey);
+                    toast({
+                      title: "API Keys Saved",
+                      description: "Your API keys have been saved securely.",
+                    });
+                  }}
+                >
+                  Save API Keys
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>

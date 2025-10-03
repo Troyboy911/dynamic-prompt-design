@@ -14,13 +14,28 @@ const Footer = () => {
               Pioneering the future through innovative technology solutions and intelligent automation.
             </p>
             <div className="flex space-x-4">
-              <Button variant="ghost" size="icon" className="hover:text-primary">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="hover:text-primary"
+                onClick={() => window.open('https://github.com/stellarcdynamics', '_blank')}
+              >
                 <Github className="w-5 h-5" />
               </Button>
-              <Button variant="ghost" size="icon" className="hover:text-primary">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="hover:text-primary"
+                onClick={() => window.open('https://linkedin.com/company/stellarcdynamics', '_blank')}
+              >
                 <Linkedin className="w-5 h-5" />
               </Button>
-              <Button variant="ghost" size="icon" className="hover:text-primary">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="hover:text-primary"
+                onClick={() => window.open('https://twitter.com/stellarcdynamics', '_blank')}
+              >
                 <Twitter className="w-5 h-5" />
               </Button>
             </div>

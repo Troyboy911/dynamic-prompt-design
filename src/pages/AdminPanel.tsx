@@ -32,18 +32,45 @@ const AdminPanel = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user is authenticated (not using localStorage - this is temporary)
+    let subscription: any;
+
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (!session) {
-        const isAdmin = localStorage.getItem("stellarc-admin");
-        if (!isAdmin) {
-          navigate("/admin");
-        }
+        navigate("/admin");
+        return;
       }
+
+      // Verify admin role
+      const { data: roleData } = await supabase
+        .from('user_roles' as any)
+        .select('role')
+        .eq('user_id', session.user.id)
+        .eq('role', 'admin')
+        .single();
+
+      if (!roleData) {
+        await supabase.auth.signOut();
+        navigate("/admin");
+        return;
+      }
+
+      fetchLogs();
     };
+
+    // Set up auth state listener
+    subscription = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate("/admin");
+      }
+    });
+
     checkAuth();
-    fetchLogs();
+
+    return () => {
+      subscription?.data?.subscription?.unsubscribe();
+    };
   }, [navigate]);
 
   const fetchLogs = async () => {
@@ -58,8 +85,8 @@ const AdminPanel = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("stellarc-admin");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate("/");
   };
 

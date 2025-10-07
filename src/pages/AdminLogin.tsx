@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,35 +6,74 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Lock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminLogin = () => {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if already authenticated with admin role
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: roleData } = await supabase
+          .from('user_roles' as any)
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .single();
+        
+        if (roleData) {
+          navigate("/admin/panel");
+        }
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simple password check - replace with proper authentication
-    setTimeout(() => {
-      if (password === "stellarc2024") {
-        localStorage.setItem("stellarc-admin", "authenticated");
-        toast({
-          title: "Access Granted",
-          description: "Welcome to Stellarc Admin Panel",
-        });
-        navigate("/admin/panel");
-      } else {
-        toast({
-          title: "Access Denied", 
-          description: "Invalid password",
-          variant: "destructive",
-        });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // Check if user has admin role
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles' as any)
+        .select('role')
+        .eq('user_id', data.user.id)
+        .eq('role', 'admin')
+        .single();
+
+      if (roleError || !roleData) {
+        await supabase.auth.signOut();
+        throw new Error('Access denied: Admin privileges required');
       }
+
+      toast({
+        title: "Access Granted",
+        description: "Welcome to Stellarc Admin Panel",
+      });
+      navigate("/admin/panel");
+    } catch (error: any) {
+      toast({
+        title: "Access Denied",
+        description: error.message || "Invalid credentials or insufficient permissions",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -49,6 +88,17 @@ const AdminLogin = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@stellarc.com"
+                required
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input

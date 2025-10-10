@@ -1,0 +1,79 @@
+name: Deploy to Cloudpanel VPS
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build application
+      run: npm run build
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+
+    - name: Deploy to VPS via SSH
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: 22
+        source: "dist/*"
+        target: "/tmp/stellarc-deploy"
+        strip_components: 1
+
+    - name: Move files to production and cleanup
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: 22
+        script: |
+          # Backup current deployment
+          if [ -d "${{ secrets.VPS_DEPLOY_PATH }}" ]; then
+            echo "Creating backup..."
+            tar -czf /tmp/stellarc-backup-$(date +%Y%m%d-%H%M%S).tar.gz -C ${{ secrets.VPS_DEPLOY_PATH }} .
+          fi
+          
+          # Clear target directory (except hidden files like .htaccess)
+          echo "Clearing target directory..."
+          find ${{ secrets.VPS_DEPLOY_PATH }} -mindepth 1 -maxdepth 1 ! -name '.*' -exec rm -rf {} +
+          
+          # Move new files
+          echo "Deploying new files..."
+          mv /tmp/stellarc-deploy/* ${{ secrets.VPS_DEPLOY_PATH }}/
+          
+          # Set proper permissions
+          echo "Setting permissions..."
+          find ${{ secrets.VPS_DEPLOY_PATH }} -type d -exec chmod 755 {} \;
+          find ${{ secrets.VPS_DEPLOY_PATH }} -type f -exec chmod 644 {} \;
+          
+          # Cleanup
+          rm -rf /tmp/stellarc-deploy
+          
+          echo "✅ Deployment completed successfully!"
+
+    - name: Notify deployment status
+      run: |
+        echo "✅ Build completed successfully"
+        echo "🚀 Deployed to VPS at ${{ secrets.VPS_HOST }}"
+        echo "📦 Deployment timestamp: $(date)"

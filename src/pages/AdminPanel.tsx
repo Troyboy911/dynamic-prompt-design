@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Bot, Upload, Settings, FileText, Loader2 } from "lucide-react";
+import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AutomationLog {
@@ -21,6 +21,12 @@ interface AutomationLog {
   created_at: string;
 }
 
+interface UserWithRoles {
+  user_id: string;
+  email: string;
+  roles: string[];
+}
+
 const AdminPanel = () => {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +34,8 @@ const AdminPanel = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [logs, setLogs] = useState<AutomationLog[]>([]);
   const [agentResponse, setAgentResponse] = useState("");
+  const [users, setUsers] = useState<UserWithRoles[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -82,6 +90,64 @@ const AdminPanel = () => {
     
     if (!error && data) {
       setLogs(data);
+    }
+  };
+
+  const fetchUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-users-with-roles');
+
+      if (error) throw error;
+
+      setUsers(data.users || []);
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load users",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, role: 'admin' | 'moderator' | 'user', action: 'add' | 'remove') => {
+    try {
+      if (action === 'add') {
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Role Added",
+          description: `${role} role added successfully`,
+        });
+      } else {
+        const { error } = await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId)
+          .eq('role', role);
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Role Removed",
+          description: `${role} role removed successfully`,
+        });
+      }
+      
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -199,10 +265,14 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="agent" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="agent" className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
               AI Agent
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Users
             </TabsTrigger>
             <TabsTrigger value="apis" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
@@ -286,6 +356,99 @@ const AdminPanel = () => {
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Users & Role Management Tab */}
+          <TabsContent value="users">
+            <Card className="card-glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  User Role Management
+                </CardTitle>
+                <CardDescription>
+                  Manage user roles and permissions. Admins can promote/demote users.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Button onClick={fetchUsers} disabled={isLoadingUsers} variant="outline">
+                    {isLoadingUsers && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    {isLoadingUsers ? "Loading..." : "Refresh Users"}
+                  </Button>
+
+                  {users.length > 0 ? (
+                    <div className="space-y-3">
+                      {users.map((user) => (
+                        <div key={user.user_id} className="p-4 bg-secondary/20 rounded-lg border border-border">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <p className="font-medium">{user.email}</p>
+                              <p className="text-xs text-muted-foreground">ID: {user.user_id.slice(0, 8)}...</p>
+                              <div className="flex gap-2 mt-2">
+                                {user.roles.map((role) => (
+                                  <span
+                                    key={role}
+                                    className={`px-2 py-1 rounded text-xs font-medium ${
+                                      role === 'admin' ? 'bg-red-500/20 text-red-400' :
+                                      role === 'moderator' ? 'bg-blue-500/20 text-blue-400' :
+                                      'bg-green-500/20 text-green-400'
+                                    }`}
+                                  >
+                                    <Shield className="w-3 h-3 inline mr-1" />
+                                    {role}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              {!user.roles.includes('admin') && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRoleChange(user.user_id, 'admin', 'add')}
+                                >
+                                  Make Admin
+                                </Button>
+                              )}
+                              {user.roles.includes('admin') && user.roles.length > 1 && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleRoleChange(user.user_id, 'admin', 'remove')}
+                                >
+                                  Remove Admin
+                                </Button>
+                              )}
+                              {!user.roles.includes('moderator') && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRoleChange(user.user_id, 'moderator', 'add')}
+                                >
+                                  Make Moderator
+                                </Button>
+                              )}
+                              {user.roles.includes('moderator') && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRoleChange(user.user_id, 'moderator', 'remove')}
+                                >
+                                  Remove Moderator
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No users found. Click "Refresh Users" to load.</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

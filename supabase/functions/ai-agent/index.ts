@@ -63,10 +63,10 @@ serve(async (req) => {
     }
 
     const startTime = Date.now();
-    const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
+    const perplexityApiKey = Deno.env.get('perplexity_api_key');
     
     if (!perplexityApiKey) {
-      console.error('PERPLEXITY_API_KEY not configured');
+      console.error('perplexity_api_key not configured');
       return new Response(
         JSON.stringify({ error: 'AI service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

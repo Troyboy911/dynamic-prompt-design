@@ -252,7 +252,7 @@ serve(async (req) => {
       task_type: taskType,
       status: 'processing',
       input_data: { prompt, taskType },
-      model_used: 'llama-3.1-sonar-large-128k-online',
+      model_used: 'sonar-reasoning-pro',
     };
 
     const { data: logData } = await supabase
@@ -272,7 +272,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-large-128k-online',
+          model: 'sonar-reasoning-pro',
           messages: [
             {
               role: 'system',
@@ -353,7 +353,7 @@ Always use the appropriate tool for the task. Provide detailed, step-by-step exe
           .from('automation_logs')
           .update({
             status: 'success',
-            output_data: { result, model: 'llama-3.1-sonar-large-128k-online', tool_calls: toolCalls },
+            output_data: { result, model: 'sonar-reasoning-pro', tool_calls: toolCalls },
             execution_time_ms: executionTime,
             updated_at: new Date().toISOString(),
           })
@@ -367,7 +367,7 @@ Always use the appropriate tool for the task. Provide detailed, step-by-step exe
           result, 
           executionTime,
           logId,
-          model: 'llama-3.1-sonar-large-128k-online',
+          model: 'sonar-reasoning-pro',
           toolCalls
         }),
         { 

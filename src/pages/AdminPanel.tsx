@@ -28,6 +28,45 @@ interface UserWithRoles {
   roles: string[];
 }
 
+interface ConversationMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  model?: string;
+  created_at: string;
+}
+
+interface Scraper {
+  id: string;
+  name: string;
+  description?: string;
+  scraper_type: string;
+  config?: any;
+  status: string;
+  created_at: string;
+}
+
+interface Automation {
+  id: string;
+  name: string;
+  description?: string;
+  automation_type: string;
+  config?: any;
+  status: string;
+  created_at: string;
+}
+
+interface PlaygroundTool {
+  id: string;
+  name: string;
+  description?: string;
+  tool_type: string;
+  config?: any;
+  airtable_synced: boolean;
+  airtable_record_id?: string;
+  created_at: string;
+}
+
 const AdminPanel = () => {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -38,6 +77,10 @@ const AdminPanel = () => {
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [selectedModel, setSelectedModel] = useState("sonar-reasoning-pro");
+  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
+  const [scrapers, setScrapers] = useState<Scraper[]>([]);
+  const [automations, setAutomations] = useState<Automation[]>([]);
+  const [playgroundTools, setPlaygroundTools] = useState<PlaygroundTool[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -67,6 +110,10 @@ const AdminPanel = () => {
       }
 
       fetchLogs();
+      fetchConversationHistory();
+      fetchScrapers();
+      fetchAutomations();
+      fetchPlaygroundTools();
     };
 
     // Set up auth state listener
@@ -92,6 +139,51 @@ const AdminPanel = () => {
     
     if (!error && data) {
       setLogs(data);
+    }
+  };
+
+  const fetchConversationHistory = async () => {
+    const { data, error } = await supabase
+      .from('conversation_history')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    if (!error && data) {
+      setConversationHistory(data as ConversationMessage[]);
+    }
+  };
+
+  const fetchScrapers = async () => {
+    const { data, error } = await supabase
+      .from('scrapers')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (!error && data) {
+      setScrapers(data);
+    }
+  };
+
+  const fetchAutomations = async () => {
+    const { data, error } = await supabase
+      .from('automations')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (!error && data) {
+      setAutomations(data);
+    }
+  };
+
+  const fetchPlaygroundTools = async () => {
+    const { data, error } = await supabase
+      .from('playground_tools')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (!error && data) {
+      setPlaygroundTools(data);
     }
   };
 
@@ -164,23 +256,68 @@ const AdminPanel = () => {
     setAgentResponse("");
     
     try {
-      const { data, error } = await supabase.functions.invoke('ai-agent', {
-        body: { 
-          prompt: message,
-          taskType: 'admin-automation',
-          model: selectedModel
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      
+      // Use streaming endpoint
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-agent-stream`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            prompt: message,
+            model: selectedModel,
+            userId,
+          }),
         }
-      });
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
 
-      setAgentResponse(data.result);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullResponse += parsed.content;
+                  setAgentResponse(fullResponse);
+                }
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+      }
+
       toast({
         title: "AI Agent Response",
-        description: `Completed in ${data.executionTime}ms using ${data.model}`,
+        description: `Completed using ${selectedModel}`,
       });
       
       await fetchLogs();
+      await fetchConversationHistory();
       setMessage("");
     } catch (error: any) {
       console.error('AI Agent error:', error);
@@ -268,10 +405,22 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="agent" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="agent" className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
               AI Agent
+            </TabsTrigger>
+            <TabsTrigger value="scrapers" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Scrapers
+            </TabsTrigger>
+            <TabsTrigger value="automations" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Automations
+            </TabsTrigger>
+            <TabsTrigger value="playground" className="flex items-center gap-2">
+              <Bot className="w-4 h-4" />
+              Playground
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
@@ -354,6 +503,25 @@ const AdminPanel = () => {
                   </div>
                 )}
 
+                {conversationHistory.length > 0 && (
+                  <div className="mt-6 space-y-2">
+                    <h4 className="font-semibold text-primary">Conversation History:</h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {conversationHistory.slice(0, 10).map((msg) => (
+                        <div key={msg.id} className={`p-3 rounded text-sm ${msg.role === 'user' ? 'bg-secondary/20' : 'bg-primary/10'}`}>
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-semibold capitalize">{msg.role}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(msg.created_at).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {logs.length > 0 && (
                   <div className="mt-6 space-y-2">
                     <h4 className="font-semibold text-primary">Recent Activity:</h4>
@@ -380,6 +548,160 @@ const AdminPanel = () => {
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Scrapers Tab */}
+          <TabsContent value="scrapers">
+            <Card className="card-glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Web Scrapers
+                </CardTitle>
+                <CardDescription>
+                  Manage web scraping tools to extract data from websites
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {scrapers.map((scraper) => (
+                    <div key={scraper.id} className="p-4 bg-secondary/20 rounded-lg border border-border">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <h4 className="font-semibold">{scraper.name}</h4>
+                          <p className="text-sm text-muted-foreground">{scraper.description}</p>
+                          <div className="flex gap-2 mt-2">
+                            <span className="px-2 py-1 rounded text-xs bg-primary/20 text-primary">
+                              {scraper.scraper_type}
+                            </span>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              scraper.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {scraper.status}
+                            </span>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline">
+                          Configure
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Automations Tab */}
+          <TabsContent value="automations">
+            <Card className="card-glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-primary" />
+                  Automation Workflows
+                </CardTitle>
+                <CardDescription>
+                  Manage automated tasks and workflows
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {automations.map((automation) => (
+                    <div key={automation.id} className="p-4 bg-secondary/20 rounded-lg border border-border">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <h4 className="font-semibold">{automation.name}</h4>
+                          <p className="text-sm text-muted-foreground">{automation.description}</p>
+                          <div className="flex gap-2 mt-2">
+                            <span className="px-2 py-1 rounded text-xs bg-primary/20 text-primary">
+                              {automation.automation_type}
+                            </span>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              automation.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {automation.status}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline">
+                            Run
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            Edit
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Playground Tab */}
+          <TabsContent value="playground">
+            <Card className="card-glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-primary" />
+                  Tool Playground
+                </CardTitle>
+                <CardDescription>
+                  Build, test, and store custom tools. Sync with Airtable for collaborative workflows.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
+                    <h4 className="font-semibold mb-2">Playground Features:</h4>
+                    <ul className="text-sm space-y-1 list-disc list-inside">
+                      <li>Build and test new automation tools</li>
+                      <li>Save tools to database for reuse</li>
+                      <li>Import tools from Airtable</li>
+                      <li>Export tools back to Airtable</li>
+                      <li>Webhook triggers for Airtable changes</li>
+                    </ul>
+                  </div>
+
+                  <h4 className="font-semibold text-primary">Your Tools:</h4>
+                  {playgroundTools.length > 0 ? (
+                    <div className="space-y-3">
+                      {playgroundTools.map((tool) => (
+                        <div key={tool.id} className="p-4 bg-secondary/20 rounded-lg border border-border">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <h4 className="font-semibold">{tool.name}</h4>
+                              <p className="text-sm text-muted-foreground">{tool.description}</p>
+                              <div className="flex gap-2 mt-2">
+                                <span className="px-2 py-1 rounded text-xs bg-primary/20 text-primary">
+                                  {tool.tool_type}
+                                </span>
+                                {tool.airtable_synced && (
+                                  <span className="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400">
+                                    Synced with Airtable
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline">
+                                Test
+                              </Button>
+                              <Button size="sm" variant="outline">
+                                Sync to Airtable
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No tools created yet. Use the AI agent to create custom tools.</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -56,6 +56,66 @@ export type Database = {
         }
         Relationships: []
       }
+      automations: {
+        Row: {
+          automation_type: string
+          config: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          automation_type: string
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          automation_type?: string
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      conversation_history: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          model: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       file_metadata: {
         Row: {
           bucket_id: string | null
@@ -86,6 +146,78 @@ export type Database = {
           id?: string
           mime_type?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      playground_tools: {
+        Row: {
+          airtable_record_id: string | null
+          airtable_synced: boolean | null
+          config: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          tool_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          airtable_record_id?: string | null
+          airtable_synced?: boolean | null
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          tool_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          airtable_record_id?: string | null
+          airtable_synced?: boolean | null
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          tool_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scrapers: {
+        Row: {
+          config: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          scraper_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          scraper_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          scraper_type?: string
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }

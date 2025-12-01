@@ -53,7 +53,7 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    const { prompt, taskType = 'general' } = await req.json();
+    const { prompt, taskType = 'general', model = 'sonar-reasoning-pro' } = await req.json();
     
     if (!prompt) {
       return new Response(
@@ -63,17 +63,62 @@ serve(async (req) => {
     }
 
     const startTime = Date.now();
-    const perplexityApiKey = Deno.env.get('perplexity_api_key');
     
-    if (!perplexityApiKey) {
-      console.error('perplexity_api_key not configured');
+    // Determine provider and API configuration based on model
+    let apiUrl = '';
+    let apiKey = '';
+    let apiModel = model;
+    
+    if (model.startsWith('sonar')) {
+      // Perplexity models
+      apiUrl = 'https://api.perplexity.ai/chat/completions';
+      apiKey = Deno.env.get('perplexity_api_key') || '';
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ error: 'Perplexity API not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (model.startsWith('gpt')) {
+      // OpenAI models
+      apiUrl = 'https://api.openai.com/v1/chat/completions';
+      apiKey = Deno.env.get('openai_api_key') || '';
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ error: 'OpenAI API not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (model.startsWith('gemini')) {
+      // Google Gemini models
+      apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+      apiKey = Deno.env.get('LOVABLE_API_KEY') || '';
+      apiModel = `google/${model}`;
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ error: 'Lovable AI not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (model.startsWith('openrouter')) {
+      // OpenRouter models
+      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+      apiKey = Deno.env.get('openrouter_api_key') || '';
+      apiModel = model === 'openrouter-claude' ? 'anthropic/claude-3.5-sonnet' : 'openai/gpt-4';
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ error: 'OpenRouter API not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
       return new Response(
-        JSON.stringify({ error: 'AI service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Invalid model selected' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Processing AI request:', { taskType, promptLength: prompt.length, userId });
+    console.log('Processing AI request:', { taskType, promptLength: prompt.length, userId, model: apiModel });
 
     // Define comprehensive tools for all advertised services
     const tools = [
@@ -251,8 +296,8 @@ serve(async (req) => {
       user_id: userId,
       task_type: taskType,
       status: 'processing',
-      input_data: { prompt, taskType },
-      model_used: 'sonar-reasoning-pro',
+      input_data: { prompt, taskType, model: apiModel },
+      model_used: apiModel,
     };
 
     const { data: logData } = await supabase
@@ -264,15 +309,15 @@ serve(async (req) => {
     const logId = logData?.id;
 
     try {
-      // Call Perplexity API with comprehensive tools
-      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      // Call AI API with comprehensive tools
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${perplexityApiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'sonar-reasoning-pro',
+          model: apiModel,
           messages: [
             {
               role: 'system',
@@ -338,8 +383,8 @@ Always use the appropriate tool for the task. Provide detailed, step-by-step exe
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Perplexity API error:', response.status, errorText);
-        throw new Error(`Perplexity API error: ${response.status}`);
+        console.error('AI API error:', response.status, errorText);
+        throw new Error(`AI API error: ${response.status}`);
       }
 
       const data = await response.json();
@@ -353,7 +398,7 @@ Always use the appropriate tool for the task. Provide detailed, step-by-step exe
           .from('automation_logs')
           .update({
             status: 'success',
-            output_data: { result, model: 'sonar-reasoning-pro', tool_calls: toolCalls },
+            output_data: { result, model: apiModel, tool_calls: toolCalls },
             execution_time_ms: executionTime,
             updated_at: new Date().toISOString(),
           })
@@ -367,7 +412,7 @@ Always use the appropriate tool for the task. Provide detailed, step-by-step exe
           result, 
           executionTime,
           logId,
-          model: 'sonar-reasoning-pro',
+          model: apiModel,
           toolCalls
         }),
         { 

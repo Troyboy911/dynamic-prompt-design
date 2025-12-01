@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +37,7 @@ const AdminPanel = () => {
   const [agentResponse, setAgentResponse] = useState("");
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("sonar-reasoning-pro");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -165,7 +167,8 @@ const AdminPanel = () => {
       const { data, error } = await supabase.functions.invoke('ai-agent', {
         body: { 
           prompt: message,
-          taskType: 'admin-automation'
+          taskType: 'admin-automation',
+          model: selectedModel
         }
       });
 
@@ -174,7 +177,7 @@ const AdminPanel = () => {
       setAgentResponse(data.result);
       toast({
         title: "AI Agent Response",
-        description: `Completed in ${data.executionTime}ms`,
+        description: `Completed in ${data.executionTime}ms using ${data.model}`,
       });
       
       await fetchLogs();
@@ -306,6 +309,27 @@ const AdminPanel = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleAgentSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="model-select">AI Model</Label>
+                    <Select value={selectedModel} onValueChange={setSelectedModel}>
+                      <SelectTrigger id="model-select">
+                        <SelectValue placeholder="Select AI model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sonar">Perplexity Sonar (Fast)</SelectItem>
+                        <SelectItem value="sonar-pro">Perplexity Sonar Pro</SelectItem>
+                        <SelectItem value="sonar-reasoning">Perplexity Reasoning</SelectItem>
+                        <SelectItem value="sonar-reasoning-pro">Perplexity Reasoning Pro (Default)</SelectItem>
+                        <SelectItem value="gpt-5">OpenAI GPT-5</SelectItem>
+                        <SelectItem value="gpt-5-mini">OpenAI GPT-5 Mini</SelectItem>
+                        <SelectItem value="gpt-4.1">OpenAI GPT-4.1</SelectItem>
+                        <SelectItem value="gemini-2.5-pro">Google Gemini 2.5 Pro</SelectItem>
+                        <SelectItem value="gemini-2.5-flash">Google Gemini 2.5 Flash</SelectItem>
+                        <SelectItem value="openrouter-claude">OpenRouter Claude Sonnet</SelectItem>
+                        <SelectItem value="openrouter-gpt">OpenRouter GPT-4</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="agent-message">What would you like to do?</Label>
                     <Textarea

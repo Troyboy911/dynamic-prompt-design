@@ -10,7 +10,7 @@ const Footer = () => {
           {/* Company Info */}
           <div className="space-y-4">
             <h3 className="text-2xl font-bold text-primary">Stellarc Dynamics</h3>
-            <p className="text-muted-foreground">
+            <p className="text-foreground/80">
               Pioneering the future through innovative technology solutions and intelligent automation.
             </p>
             <div className="flex space-x-4">
@@ -44,7 +44,7 @@ const Footer = () => {
           {/* Services */}
           <div className="space-y-4">
             <h4 className="text-lg font-semibold">Services</h4>
-            <ul className="space-y-2 text-muted-foreground">
+            <ul className="space-y-2 text-foreground/80">
               <li><Link to="/solutions/app-development" className="hover:text-primary transition-colors">App Development</Link></li>
               <li><Link to="/solutions/automation" className="hover:text-primary transition-colors">Automation Solutions</Link></li>
               <li><Link to="/solutions/website-development" className="hover:text-primary transition-colors">Website Development</Link></li>
@@ -55,7 +55,7 @@ const Footer = () => {
           {/* Contact */}
           <div className="space-y-4">
             <h4 className="text-lg font-semibold">Contact</h4>
-            <div className="space-y-2 text-muted-foreground">
+            <div className="space-y-2 text-foreground/80">
               <div className="flex items-center space-x-2">
                 <Mail className="w-4 h-4" />
                 <span>contact@stellarcdynamics.com</span>
@@ -68,7 +68,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="border-t border-border/20 mt-12 pt-8 text-center text-muted-foreground">
+        <div className="border-t border-border/20 mt-12 pt-8 text-center text-foreground/70">
           <p>&copy; 2024 Stellarc Dynamics. All rights reserved.</p>
         </div>
       </div>

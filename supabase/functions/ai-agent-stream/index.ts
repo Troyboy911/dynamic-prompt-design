@@ -63,12 +63,31 @@ serve(async (req) => {
     const { data: history } = await supabase
       .from('conversation_history')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: true })
       .limit(20);
 
+    // Filter history to ensure alternating user/assistant messages
+    const filteredHistory: any[] = [];
+    let lastRole = 'system';
+    
+    if (history) {
+      for (const msg of history) {
+        if (msg.role !== lastRole && (msg.role === 'user' || msg.role === 'assistant')) {
+          filteredHistory.push({ role: msg.role, content: msg.content });
+          lastRole = msg.role;
+        }
+      }
+    }
+
+    // Ensure the last message in history is from assistant if we're adding a user message
+    if (filteredHistory.length > 0 && filteredHistory[filteredHistory.length - 1].role === 'user') {
+      filteredHistory.pop();
+    }
+
     const messages = [
       { role: 'system', content: 'You are a helpful AI assistant for Stellarc Dynamics admin panel. Help with website management, content creation, automation, and technical tasks.' },
-      ...(history || []).map((msg: any) => ({ role: msg.role, content: msg.content })),
+      ...filteredHistory,
       { role: 'user', content: prompt }
     ];
 

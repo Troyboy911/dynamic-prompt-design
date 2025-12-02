@@ -59,31 +59,40 @@ export type Database = {
       automations: {
         Row: {
           automation_type: string
+          category: string | null
           config: Json | null
           created_at: string
           description: string | null
           id: string
+          is_premium: boolean | null
           name: string
+          price_per_use: number | null
           status: string
           updated_at: string
         }
         Insert: {
           automation_type: string
+          category?: string | null
           config?: Json | null
           created_at?: string
           description?: string | null
           id?: string
+          is_premium?: boolean | null
           name: string
+          price_per_use?: number | null
           status?: string
           updated_at?: string
         }
         Update: {
           automation_type?: string
+          category?: string | null
           config?: Json | null
           created_at?: string
           description?: string | null
           id?: string
+          is_premium?: boolean | null
           name?: string
+          price_per_use?: number | null
           status?: string
           updated_at?: string
         }
@@ -188,36 +197,123 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_tiers: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          features: Json | null
+          id: string
+          is_premium: boolean | null
+          name: string
+          price_monthly: number
+          price_per_use: number | null
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          updated_at: string | null
+          usage_limit_monthly: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_premium?: boolean | null
+          name: string
+          price_monthly: number
+          price_per_use?: number | null
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string | null
+          usage_limit_monthly?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_premium?: boolean | null
+          name?: string
+          price_monthly?: number
+          price_per_use?: number | null
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string | null
+          usage_limit_monthly?: number | null
+        }
+        Relationships: []
+      }
       scrapers: {
         Row: {
+          category: string | null
           config: Json | null
           created_at: string
           description: string | null
           id: string
+          is_premium: boolean | null
           name: string
+          price_per_use: number | null
           scraper_type: string
           status: string
           updated_at: string
         }
         Insert: {
+          category?: string | null
           config?: Json | null
           created_at?: string
           description?: string | null
           id?: string
+          is_premium?: boolean | null
           name: string
+          price_per_use?: number | null
           scraper_type: string
           status?: string
           updated_at?: string
         }
         Update: {
+          category?: string | null
           config?: Json | null
           created_at?: string
           description?: string | null
           id?: string
+          is_premium?: boolean | null
           name?: string
+          price_per_use?: number | null
           scraper_type?: string
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_purchases: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          item_id: string
+          item_type: string
+          status: string
+          stripe_payment_intent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          item_id: string
+          item_type: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -241,6 +337,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          pricing_tier_id: string | null
+          status: string
+          stripe_subscription_id: string | null
+          updated_at: string | null
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          pricing_tier_id?: string | null
+          status?: string
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          pricing_tier_id?: string | null
+          status?: string
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_pricing_tier_id_fkey"
+            columns: ["pricing_tier_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -12,6 +12,7 @@ import AppDevelopment from "./pages/AppDevelopment";
 import Automation from "./pages/Automation";
 import WebsiteDevelopment from "./pages/WebsiteDevelopment";
 import AIAgents from "./pages/AIAgents";
+import Marketplace from "./pages/Marketplace";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/solutions/automation" element={<Automation />} />
           <Route path="/solutions/website-development" element={<WebsiteDevelopment />} />
           <Route path="/solutions/ai-agents" element={<AIAgents />} />
+          <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/panel" element={<AdminPanel />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

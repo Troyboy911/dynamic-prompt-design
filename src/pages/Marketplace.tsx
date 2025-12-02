@@ -71,21 +71,20 @@ const Marketplace = () => {
     }
   };
 
-  const handleSubscribe = async (tierId: string, price: number) => {
+  const handleSubscribe = async (tierId: string) => {
     setProcessingPayment(tierId);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         navigate('/admin/login');
         return;
       }
 
-      // Create Stripe checkout session
+      // Create Stripe checkout session - price fetched from database
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
           priceId: tierId, 
-          type: 'subscription',
-          amount: price * 100 // Convert to cents
+          type: 'subscription'
         }
       });
 
@@ -106,22 +105,21 @@ const Marketplace = () => {
     }
   };
 
-  const handlePurchase = async (itemType: string, itemId: string, price: number) => {
+  const handlePurchase = async (itemType: 'scraper' | 'automation', itemId: string) => {
     setProcessingPayment(itemId);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         navigate('/admin/login');
         return;
       }
 
-      // Create one-time payment
+      // Create one-time payment - price fetched from database
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
           itemType,
           itemId,
-          type: 'one_time',
-          amount: price * 100 // Convert to cents
+          type: 'one_time'
         }
       });
 
@@ -202,7 +200,7 @@ const Marketplace = () => {
                   <CardFooter>
                     <Button 
                       className="w-full" 
-                      onClick={() => handleSubscribe(tier.id, tier.price_monthly)}
+                      onClick={() => handleSubscribe(tier.id)}
                       disabled={processingPayment === tier.id}
                     >
                       {processingPayment === tier.id ? (
@@ -247,7 +245,7 @@ const Marketplace = () => {
                   <CardFooter>
                     <Button 
                       className="w-full"
-                      onClick={() => handlePurchase('scraper', scraper.id, scraper.price_per_use)}
+                      onClick={() => handlePurchase('scraper', scraper.id)}
                       disabled={processingPayment === scraper.id}
                     >
                       {processingPayment === scraper.id ? (
@@ -295,7 +293,7 @@ const Marketplace = () => {
                   <CardFooter>
                     <Button 
                       className="w-full"
-                      onClick={() => handlePurchase('automation', automation.id, automation.price_per_use)}
+                      onClick={() => handlePurchase('automation', automation.id)}
                       disabled={processingPayment === automation.id}
                     >
                       {processingPayment === automation.id ? (

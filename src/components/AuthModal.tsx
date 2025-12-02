@@ -47,7 +47,7 @@ const AuthModal = ({ open, onOpenChange }: AuthModalProps) => {
             🎉 Exclusive Launch Offer!
           </DialogTitle>
           <DialogDescription className="text-base">
-            Get <span className="text-primary font-semibold">30 days FREE</span> access to our Pro automation tools
+            Get <span className="text-primary font-semibold">7 days FREE</span> access to our featured automation tools
           </DialogDescription>
         </DialogHeader>
 
@@ -78,7 +78,7 @@ const AuthModal = ({ open, onOpenChange }: AuthModalProps) => {
 
           <div className="text-center text-sm text-muted-foreground">
             <span className="line-through">$79.99/month</span>
-            <span className="ml-2 text-primary font-bold">FREE for 30 days</span>
+            <span className="ml-2 text-primary font-bold">FREE for 7 days</span>
           </div>
         </div>
 

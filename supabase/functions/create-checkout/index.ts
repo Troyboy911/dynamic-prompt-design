@@ -140,7 +140,7 @@ serve(async (req) => {
       // Fetch subscription price from database
       const { data: pricingTier, error: tierError } = await supabaseClient
         .from('pricing_tiers')
-        .select('id, name, price_monthly, stripe_price_id')
+        .select('id, name, price_monthly, stripe_price_id, stripe_product_id')
         .eq('id', validatedData.priceId)
         .single();
 
@@ -158,27 +158,39 @@ serve(async (req) => {
       // Convert price to cents (price_monthly is in dollars)
       const amountInCents = Math.round(Number(pricingTier.price_monthly) * 100);
 
+      // Build line items - use stored Stripe price ID if available, otherwise create ad-hoc
+      let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
+      
+      if (pricingTier.stripe_price_id) {
+        lineItems = [{
+          price: pricingTier.stripe_price_id,
+          quantity: 1,
+        }];
+        logStep('Using stored Stripe price ID', { priceId: pricingTier.stripe_price_id });
+      } else {
+        lineItems = [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `Stellarc ${pricingTier.name}`,
+            },
+            unit_amount: amountInCents,
+            recurring: {
+              interval: 'month',
+            },
+          },
+          quantity: 1,
+        }];
+        logStep('Using ad-hoc price data');
+      }
+
       // Create subscription checkout session
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
         customer: customerId,
         customer_email: customerId ? undefined : user.email,
         payment_method_types: ['card'],
-        line_items: [
-          {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: `Stellarc ${pricingTier.name}`,
-              },
-              unit_amount: amountInCents,
-              recurring: {
-                interval: 'month',
-              },
-            },
-            quantity: 1,
-          },
-        ],
+        line_items: lineItems,
         success_url: `${origin}/marketplace?success=true&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/marketplace?canceled=true`,
         metadata: {
@@ -188,7 +200,7 @@ serve(async (req) => {
         },
       });
 
-      logStep('Subscription checkout session created', { sessionId: session.id });
+      logStep('Subscription checkout session created', { sessionId: session.id, url: session.url });
 
       return new Response(
         JSON.stringify({ url: session.url }),

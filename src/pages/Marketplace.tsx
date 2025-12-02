@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Star, ShoppingCart, Zap, Globe, TrendingUp, Sparkles } from 'lucide-react';
+import { Loader2, Star, ShoppingCart, Zap, Globe, TrendingUp, Sparkles, CheckCircle } from 'lucide-react';
+import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
 
 interface PricingTier {
   id: string;
@@ -38,6 +40,7 @@ interface Automation {
 const Marketplace = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
   const [scrapers, setScrapers] = useState<Scraper[]>([]);
@@ -45,8 +48,25 @@ const Marketplace = () => {
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check for success/cancel from Stripe
+    const success = searchParams.get('success');
+    const canceled = searchParams.get('canceled');
+    
+    if (success === 'true') {
+      toast({
+        title: "🎉 Purchase Successful!",
+        description: "Thank you for your purchase. Check your email for details.",
+      });
+    } else if (canceled === 'true') {
+      toast({
+        title: "Purchase Canceled",
+        description: "Your payment was canceled. Feel free to try again.",
+        variant: "destructive",
+      });
+    }
+    
     fetchMarketplaceData();
-  }, []);
+  }, [searchParams]);
 
   const fetchMarketplaceData = async () => {
     try {
@@ -76,7 +96,7 @@ const Marketplace = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        navigate('/admin/login');
+        navigate('/auth?returnTo=/marketplace');
         return;
       }
 
@@ -105,12 +125,12 @@ const Marketplace = () => {
     }
   };
 
-  const handlePurchase = async (itemType: 'scraper' | 'automation', itemId: string) => {
-    setProcessingPayment(itemId);
+  const handlePurchase = async (itemType: 'scraper' | 'automation', itemId: string, purchaseLicense: boolean = false) => {
+    setProcessingPayment(itemId + (purchaseLicense ? '-license' : ''));
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        navigate('/admin/login');
+        navigate('/auth?returnTo=/marketplace');
         return;
       }
 
@@ -119,11 +139,21 @@ const Marketplace = () => {
         body: { 
           itemType,
           itemId,
-          type: 'one_time'
+          type: 'one_time',
+          purchaseLicense
         }
       });
 
       if (error) throw error;
+      
+      if (data?.error) {
+        toast({
+          title: "Rate Limit Reached",
+          description: data.error,
+          variant: "destructive"
+        });
+        return;
+      }
       
       if (data?.url) {
         window.location.href = data.url;
@@ -142,16 +172,25 @@ const Marketplace = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen hero-bg">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4 py-16">
+    <div className="min-h-screen hero-bg">
+      <Navigation />
+      <div className="container mx-auto px-4 py-24">
         <div className="text-center mb-16">
+          <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            15% Launch Discount Applied
+          </Badge>
           <h1 className="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
             Stellarc Marketplace
           </h1>
@@ -242,11 +281,11 @@ const Marketplace = () => {
                     </div>
                     <Badge className="mt-2" variant="outline">{scraper.category}</Badge>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="flex-col gap-2">
                     <Button 
                       className="w-full"
                       onClick={() => handlePurchase('scraper', scraper.id)}
-                      disabled={processingPayment === scraper.id}
+                      disabled={processingPayment === scraper.id || processingPayment === scraper.id + '-license'}
                     >
                       {processingPayment === scraper.id ? (
                         <>
@@ -256,7 +295,25 @@ const Marketplace = () => {
                       ) : (
                         <>
                           <ShoppingCart className="h-4 w-4 mr-2" />
-                          Purchase
+                          Single Use - ${scraper.price_per_use}
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handlePurchase('scraper', scraper.id, true)}
+                      disabled={processingPayment === scraper.id || processingPayment === scraper.id + '-license'}
+                    >
+                      {processingPayment === scraper.id + '-license' ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          License - ${(scraper.price_per_use * 10).toFixed(2)}
                         </>
                       )}
                     </Button>
@@ -290,11 +347,11 @@ const Marketplace = () => {
                     </div>
                     <Badge className="mt-2" variant="outline">{automation.category}</Badge>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="flex-col gap-2">
                     <Button 
                       className="w-full"
                       onClick={() => handlePurchase('automation', automation.id)}
-                      disabled={processingPayment === automation.id}
+                      disabled={processingPayment === automation.id || processingPayment === automation.id + '-license'}
                     >
                       {processingPayment === automation.id ? (
                         <>
@@ -304,7 +361,25 @@ const Marketplace = () => {
                       ) : (
                         <>
                           <ShoppingCart className="h-4 w-4 mr-2" />
-                          Purchase
+                          Single Use - ${automation.price_per_use}
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handlePurchase('automation', automation.id, true)}
+                      disabled={processingPayment === automation.id || processingPayment === automation.id + '-license'}
+                    >
+                      {processingPayment === automation.id + '-license' ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          License - ${(automation.price_per_use * 10).toFixed(2)}
                         </>
                       )}
                     </Button>
@@ -315,6 +390,7 @@ const Marketplace = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <Footer />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { ShoppingBag, ArrowRight } from "lucide-react";
 import heroImage from "@/assets/stellarc-hero.jpg";
 
 const Hero = () => {
@@ -27,16 +28,29 @@ const Hero = () => {
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link to="/solutions">
+          <Link to="/marketplace">
             <Button size="lg" className="glow-effect text-lg px-8 py-6">
-              Explore Solutions
+              <ShoppingBag className="w-5 h-5 mr-2" />
+              Browse Marketplace
             </Button>
           </Link>
-          <Link to="/contact">
+          <Link to="/solutions">
             <Button variant="outline" size="lg" className="text-lg px-8 py-6 border-primary/50 hover:border-primary">
-              Contact Us
+              Explore Solutions
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </Link>
+        </div>
+        
+        <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            30-Day Free Trial
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary"></span>
+            No Credit Card Required
+          </div>
         </div>
       </div>
     </section>

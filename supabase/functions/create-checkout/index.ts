@@ -18,6 +18,7 @@ const oneTimeCheckoutSchema = z.object({
   type: z.literal('one_time'),
   itemType: z.enum(['scraper', 'automation'], { message: 'Invalid item type' }),
   itemId: z.string().uuid({ message: 'Invalid item ID' }),
+  purchaseLicense: z.boolean().optional(),
 });
 
 const checkoutSchema = z.discriminatedUnion('type', [
@@ -30,6 +31,44 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+// Rate limiting: Check subscriber usage limits
+async function checkRateLimit(supabaseClient: any, userId: string): Promise<{ allowed: boolean; message?: string }> {
+  // Get user's active subscription
+  const { data: subscription } = await supabaseClient
+    .from('user_subscriptions')
+    .select('*, pricing_tiers(*)')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .single();
+
+  if (!subscription) {
+    return { allowed: true }; // No subscription, proceed with pay-per-use
+  }
+
+  const usageLimit = subscription.pricing_tiers?.usage_limit_monthly;
+  if (!usageLimit) {
+    return { allowed: true }; // Unlimited plan
+  }
+
+  const currentUsage = subscription.usage_count || 0;
+  
+  if (currentUsage >= usageLimit) {
+    return { 
+      allowed: false, 
+      message: `Monthly usage limit reached (${currentUsage}/${usageLimit}). Please upgrade your plan or wait for the next billing cycle.`
+    };
+  }
+
+  // Increment usage count
+  await supabaseClient
+    .from('user_subscriptions')
+    .update({ usage_count: currentUsage + 1, updated_at: new Date().toISOString() })
+    .eq('id', subscription.id);
+
+  logStep('Rate limit check passed', { userId, currentUsage: currentUsage + 1, limit: usageLimit });
+  return { allowed: true };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -38,10 +77,10 @@ serve(async (req) => {
   try {
     logStep('Function started');
 
-    // Initialize Supabase client
+    // Initialize Supabase client with service role for rate limit checks
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
     // Verify user authentication
@@ -175,8 +214,23 @@ serve(async (req) => {
         price: item.price_per_use 
       });
 
-      // Convert price to cents
-      const amountInCents = Math.round(Number(item.price_per_use) * 100);
+      // Check rate limit for subscribers making one-time purchases
+      const rateLimitCheck = await checkRateLimit(supabaseClient, user.id);
+      if (!rateLimitCheck.allowed) {
+        logStep('Rate limit exceeded', { userId: user.id });
+        return new Response(
+          JSON.stringify({ error: rateLimitCheck.message }),
+          { 
+            status: 429, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      // License purchase multiplier (10x for lifetime license)
+      const isLicensePurchase = validatedData.purchaseLicense === true;
+      const licenseMultiplier = isLicensePurchase ? 10 : 1;
+      const amountInCents = Math.round(Number(item.price_per_use) * 100 * licenseMultiplier);
 
       // Create one-time payment checkout session
       const session = await stripe.checkout.sessions.create({
@@ -189,7 +243,12 @@ serve(async (req) => {
             price_data: {
               currency: 'usd',
               product_data: {
-                name: `${item.name} (${validatedData.itemType})`,
+                name: isLicensePurchase 
+                  ? `${item.name} - Lifetime License` 
+                  : `${item.name} (${validatedData.itemType})`,
+                description: isLicensePurchase 
+                  ? 'Unlimited usage - one-time purchase'
+                  : 'Single use purchase',
               },
               unit_amount: amountInCents,
             },
@@ -203,10 +262,11 @@ serve(async (req) => {
           user_id: user.id,
           item_type: validatedData.itemType,
           item_id: item.id,
+          is_license: isLicensePurchase ? 'true' : 'false',
         },
       });
 
-      logStep('One-time checkout session created', { sessionId: session.id });
+      logStep('One-time checkout session created', { sessionId: session.id, isLicense: isLicensePurchase });
 
       return new Response(
         JSON.stringify({ url: session.url }),

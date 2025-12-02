@@ -257,21 +257,23 @@ const AdminPanel = () => {
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
       
-      // Use streaming endpoint
+      if (!session?.access_token) {
+        throw new Error('No valid session found');
+      }
+      
+      // Use streaming endpoint with user's JWT token
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-agent-stream`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             prompt: message,
             model: selectedModel,
-            userId,
           }),
         }
       );

@@ -3,5 +3,17 @@ project_id = "nlizazfdcrfnzksydidk"
 [functions.ai-agent]
 verify_jwt = true
 
+[functions.ai-agent-stream]
+verify_jwt = true
+
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.get-users-with-roles]
+verify_jwt = true
+
 [functions.stripe-webhook]
+verify_jwt = false
+
+[functions.sync-stripe-products]
 verify_jwt = false

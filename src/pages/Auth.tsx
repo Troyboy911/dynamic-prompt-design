@@ -103,10 +103,10 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast({
+              toast({
         title: showFreeTrial ? "🎉 Free Trial Activated!" : "Account Created!",
         description: showFreeTrial 
-          ? "Welcome! You now have 30 days free access to our Pro automation tools."
+          ? "Welcome! You now have 7 days free access to our featured automation tools."
           : "Your account has been created. Check your email to verify.",
       });
       
@@ -139,10 +139,10 @@ const Auth = () => {
               <div className="bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg p-4 mb-4 border border-primary/30">
                 <Gift className="w-8 h-8 text-primary mx-auto mb-2" />
                 <p className="text-sm font-medium text-primary">
-                  🎁 Get 30 Days FREE Pro Access
+                  🎁 Get 7 Days FREE Access
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Sign up now and unlock premium automations & scrapers
+                  Sign up now and unlock featured automations & scrapers
                 </p>
               </div>
             )}

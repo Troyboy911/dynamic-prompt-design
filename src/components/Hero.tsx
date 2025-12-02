@@ -45,7 +45,7 @@ const Hero = () => {
         <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500"></span>
-            30-Day Free Trial
+            7-Day Free Trial
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-primary"></span>

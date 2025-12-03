@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield } from "lucide-react";
+import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AutomationLog {
@@ -67,6 +67,16 @@ interface PlaygroundTool {
   created_at: string;
 }
 
+interface AdvertiseAutomation {
+  id: string;
+  name: string;
+  description?: string;
+  automation_type: string;
+  config?: any;
+  status: string;
+  created_at: string;
+}
+
 const AdminPanel = () => {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -81,6 +91,10 @@ const AdminPanel = () => {
   const [scrapers, setScrapers] = useState<Scraper[]>([]);
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [playgroundTools, setPlaygroundTools] = useState<PlaygroundTool[]>([]);
+  const [advertiseAutomations, setAdvertiseAutomations] = useState<AdvertiseAutomation[]>([]);
+  const [showToolBuilder, setShowToolBuilder] = useState(false);
+  const [newTool, setNewTool] = useState({ name: '', description: '', tool_type: 'custom', config: '{}' });
+  const [isSavingTool, setIsSavingTool] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -114,6 +128,7 @@ const AdminPanel = () => {
       fetchScrapers();
       fetchAutomations();
       fetchPlaygroundTools();
+      fetchAdvertiseAutomations();
     };
 
     // Set up auth state listener
@@ -184,6 +199,71 @@ const AdminPanel = () => {
     
     if (!error && data) {
       setPlaygroundTools(data);
+    }
+  };
+
+  const fetchAdvertiseAutomations = async () => {
+    const { data, error } = await supabase
+      .from('automations')
+      .select('*')
+      .eq('category', 'advertise')
+      .order('created_at', { ascending: false });
+    
+    if (!error && data) {
+      setAdvertiseAutomations(data);
+    }
+  };
+
+  const handleCreateTool = async () => {
+    if (!newTool.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Tool name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingTool(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) throw new Error('Not authenticated');
+
+      let parsedConfig = {};
+      try {
+        parsedConfig = JSON.parse(newTool.config);
+      } catch {
+        parsedConfig = {};
+      }
+
+      const { error } = await supabase
+        .from('playground_tools')
+        .insert({
+          user_id: session.user.id,
+          name: newTool.name,
+          description: newTool.description,
+          tool_type: newTool.tool_type,
+          config: parsedConfig,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Tool Created",
+        description: `${newTool.name} has been added to your playground`,
+      });
+
+      setNewTool({ name: '', description: '', tool_type: 'custom', config: '{}' });
+      setShowToolBuilder(false);
+      fetchPlaygroundTools();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingTool(false);
     }
   };
 
@@ -407,7 +487,7 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="agent" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="agent" className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
               AI Agent
@@ -421,8 +501,12 @@ const AdminPanel = () => {
               Automations
             </TabsTrigger>
             <TabsTrigger value="playground" className="flex items-center gap-2">
-              <Bot className="w-4 h-4" />
+              <Wrench className="w-4 h-4" />
               Playground
+            </TabsTrigger>
+            <TabsTrigger value="advertise" className="flex items-center gap-2">
+              <Megaphone className="w-4 h-4" />
+              Advertise
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
@@ -647,16 +731,86 @@ const AdminPanel = () => {
           <TabsContent value="playground">
             <Card className="card-glass">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-primary" />
-                  Tool Playground
-                </CardTitle>
-                <CardDescription>
-                  Build, test, and store custom tools. Sync with Airtable for collaborative workflows.
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Wrench className="w-5 h-5 text-primary" />
+                      Tool Playground
+                    </CardTitle>
+                    <CardDescription>
+                      Build, test, and store custom tools. Sync with Airtable for collaborative workflows.
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => setShowToolBuilder(!showToolBuilder)} className="glow-effect">
+                    {showToolBuilder ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                    {showToolBuilder ? 'Cancel' : 'Create Tool'}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {/* Tool Builder Form */}
+                  {showToolBuilder && (
+                    <div className="p-6 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg border border-primary/40 space-y-4">
+                      <h4 className="font-semibold text-lg text-primary flex items-center gap-2">
+                        <Wrench className="w-5 h-5" />
+                        Build New Tool
+                      </h4>
+                      <div className="grid gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="tool-name">Tool Name *</Label>
+                          <Input
+                            id="tool-name"
+                            value={newTool.name}
+                            onChange={(e) => setNewTool({ ...newTool, name: e.target.value })}
+                            placeholder="e.g., Content Analyzer, Data Extractor"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tool-description">Description</Label>
+                          <Textarea
+                            id="tool-description"
+                            value={newTool.description}
+                            onChange={(e) => setNewTool({ ...newTool, description: e.target.value })}
+                            placeholder="Describe what this tool does..."
+                            rows={3}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tool-type">Tool Type</Label>
+                          <Select value={newTool.tool_type} onValueChange={(v) => setNewTool({ ...newTool, tool_type: v })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select tool type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="custom">Custom</SelectItem>
+                              <SelectItem value="scraper">Scraper</SelectItem>
+                              <SelectItem value="automation">Automation</SelectItem>
+                              <SelectItem value="analyzer">Analyzer</SelectItem>
+                              <SelectItem value="generator">Generator</SelectItem>
+                              <SelectItem value="processor">Processor</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tool-config">Configuration (JSON)</Label>
+                          <Textarea
+                            id="tool-config"
+                            value={newTool.config}
+                            onChange={(e) => setNewTool({ ...newTool, config: e.target.value })}
+                            placeholder='{"key": "value"}'
+                            rows={4}
+                            className="font-mono text-sm"
+                          />
+                        </div>
+                        <Button onClick={handleCreateTool} disabled={isSavingTool} className="w-full glow-effect">
+                          {isSavingTool && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                          {isSavingTool ? 'Creating...' : 'Create Tool'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
                     <h4 className="font-semibold mb-2">Playground Features:</h4>
                     <ul className="text-sm space-y-1 list-disc list-inside">
@@ -701,7 +855,82 @@ const AdminPanel = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-muted-foreground text-sm">No tools created yet. Use the AI agent to create custom tools.</p>
+                    <p className="text-muted-foreground text-sm">No tools created yet. Click "Create Tool" to build your first custom tool.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Advertise Tab - Admin Only Internal Tools */}
+          <TabsContent value="advertise">
+            <Card className="card-glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Megaphone className="w-5 h-5 text-primary" />
+                  Advertise - Internal Protocols
+                </CardTitle>
+                <CardDescription>
+                  Admin-only marketing and social proof automation tools. These are internal protocols not visible to customers.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <h4 className="font-semibold mb-2 text-yellow-400">⚠️ Internal Use Only</h4>
+                    <p className="text-sm text-muted-foreground">
+                      These automations are for administrative marketing purposes only. They are not listed in the public marketplace.
+                    </p>
+                  </div>
+
+                  {advertiseAutomations.length > 0 ? (
+                    <div className="space-y-4">
+                      {advertiseAutomations.map((automation) => (
+                        <div key={automation.id} className="p-5 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-lg border border-orange-500/30">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2">
+                              <h4 className="font-bold text-lg text-orange-400">{automation.name}</h4>
+                              <p className="text-sm text-muted-foreground">{automation.description}</p>
+                              <div className="flex gap-2 mt-3">
+                                <span className="px-3 py-1 rounded-full text-xs bg-orange-500/20 text-orange-400 font-medium">
+                                  {automation.automation_type}
+                                </span>
+                                <span className="px-3 py-1 rounded-full text-xs bg-red-500/20 text-red-400 font-medium">
+                                  INTERNAL
+                                </span>
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                  automation.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                  {automation.status}
+                                </span>
+                              </div>
+                              {automation.config && (
+                                <div className="mt-3 p-3 bg-background/50 rounded text-xs">
+                                  <p className="text-muted-foreground mb-1 font-semibold">Phases:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {(automation.config as any).phases?.map((phase: string, i: number) => (
+                                      <span key={i} className="px-2 py-0.5 bg-primary/20 text-primary rounded">
+                                        {phase.replace(/_/g, ' ')}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <Button size="sm" className="bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/40">
+                                Configure
+                              </Button>
+                              <Button size="sm" variant="outline">
+                                Run Protocol
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No internal advertising automations configured.</p>
                   )}
                 </div>
               </CardContent>

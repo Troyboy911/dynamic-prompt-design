@@ -4,13 +4,13 @@ import { Github, Linkedin, Twitter, Mail, Phone, MapPin } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="py-16 px-6 border-t border-border/20">
+    <footer className="py-16 px-6 border-t border-border/20 bg-background/80 backdrop-blur-sm">
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           {/* Company Info */}
           <div className="space-y-4">
             <h3 className="text-2xl font-bold text-primary">Stellarc Dynamics</h3>
-            <p className="text-foreground/80">
+            <p className="text-foreground">
               Pioneering the future through innovative technology solutions and intelligent automation.
             </p>
             <div className="flex space-x-4">
@@ -43,8 +43,8 @@ const Footer = () => {
 
           {/* Services */}
           <div className="space-y-4">
-            <h4 className="text-lg font-semibold">Services</h4>
-            <ul className="space-y-2 text-foreground/80">
+            <h4 className="text-lg font-semibold text-foreground">Services</h4>
+            <ul className="space-y-2 text-foreground">
               <li><Link to="/solutions/app-development" className="hover:text-primary transition-colors">App Development</Link></li>
               <li><Link to="/solutions/automation" className="hover:text-primary transition-colors">Automation Solutions</Link></li>
               <li><Link to="/solutions/website-development" className="hover:text-primary transition-colors">Website Development</Link></li>
@@ -54,8 +54,8 @@ const Footer = () => {
 
           {/* Contact */}
           <div className="space-y-4">
-            <h4 className="text-lg font-semibold">Contact</h4>
-            <div className="space-y-2 text-foreground/80">
+            <h4 className="text-lg font-semibold text-foreground">Contact</h4>
+            <div className="space-y-2 text-foreground">
               <div className="flex items-center space-x-2">
                 <Mail className="w-4 h-4" />
                 <span>contact@stellarcdynamics.com</span>
@@ -68,7 +68,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="border-t border-border/20 mt-12 pt-8 text-center text-foreground/70">
+        <div className="border-t border-border/20 mt-12 pt-8 text-center text-foreground">
           <p>&copy; 2024 Stellarc Dynamics. All rights reserved.</p>
         </div>
       </div>

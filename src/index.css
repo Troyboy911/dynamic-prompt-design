@@ -31,7 +31,7 @@ All colors MUST be HSL format for consistency
 
     /* Muted Dark Blues */
     --muted: 215 20% 65%;
-    --muted-foreground: 222 47% 11%;
+    --muted-foreground: 215 20% 70%;
 
     /* Bright Accent - Electric Blue */
     --accent: 210 40% 98%;

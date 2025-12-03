@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import StellarcLogo from "./StellarcLogo";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,8 +22,9 @@ const Navigation = () => {
       <div className="max-w-6xl mx-auto px-6">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="text-xl font-bold text-primary">
-            STELLARC DYNAMICS
+          <Link to="/" className="flex items-center gap-3 group">
+            <StellarcLogo size={36} className="transition-transform duration-300 group-hover:scale-110" />
+            <span className="text-xl font-bold text-primary">STELLARC DYNAMICS</span>
           </Link>
 
           {/* Desktop Navigation */}

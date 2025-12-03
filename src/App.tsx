@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import SupportChatbot from "@/components/SupportChatbot";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminLogin from "./pages/AdminLogin";
@@ -18,27 +19,39 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const AppContent = () => {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  return (
+    <>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/solutions" element={<Solutions />} />
+        <Route path="/solutions/app-development" element={<AppDevelopment />} />
+        <Route path="/solutions/automation" element={<Automation />} />
+        <Route path="/solutions/website-development" element={<WebsiteDevelopment />} />
+        <Route path="/solutions/ai-agents" element={<AIAgents />} />
+        <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin/panel" element={<AdminPanel />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      {!isAdminRoute && <SupportChatbot />}
+    </>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/solutions" element={<Solutions />} />
-          <Route path="/solutions/app-development" element={<AppDevelopment />} />
-          <Route path="/solutions/automation" element={<Automation />} />
-          <Route path="/solutions/website-development" element={<WebsiteDevelopment />} />
-          <Route path="/solutions/ai-agents" element={<AIAgents />} />
-          <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/admin" element={<AdminLogin />} />
-          <Route path="/admin/panel" element={<AdminPanel />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppContent />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

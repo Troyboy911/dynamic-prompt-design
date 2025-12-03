@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Star, ShoppingCart, Zap, Globe, TrendingUp, Sparkles, CheckCircle, Lock, Crown, Skull } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import SEOHead from '@/components/SEOHead';
 import eliteVaultImage from '@/assets/elite-vault.jpg';
 
 interface PricingTier {
@@ -226,6 +227,12 @@ const Marketplace = () => {
 
   return (
     <div className="min-h-screen hero-bg">
+      <SEOHead
+        title="Marketplace - Scrapers, Automations & Pricing Plans"
+        description="Browse Stellarc Dynamics marketplace for powerful web scrapers, intelligent automations, and flexible pricing plans. 15% launch discount available. Start with a 7-day free trial."
+        keywords="automation marketplace, web scrapers, business tools, AI automations, pricing plans, Dominus Lab, workflow automation"
+        canonicalPath="/marketplace"
+      />
       <Navigation />
       <div className="container mx-auto px-4 py-24">
         <div className="text-center mb-16">

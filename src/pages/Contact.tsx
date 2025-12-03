@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import SEOHead from "@/components/SEOHead";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +82,12 @@ const Contact = () => {
 
   return (
     <div className="min-h-screen hero-bg">
+      <SEOHead
+        title="Contact Us"
+        description="Get in touch with Stellarc Dynamics. We're ready to transform your business with cutting-edge AI agents, automation, and custom software solutions. Contact us today for a free consultation."
+        keywords="contact Stellarc Dynamics, AI consulting, automation services, software development quote, business consultation"
+        canonicalPath="/contact"
+      />
       <Navigation />
       {/* Header */}
       <div className="py-20 px-6">

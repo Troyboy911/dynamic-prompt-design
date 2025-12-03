@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Smartphone, Cpu, Globe, Bot, ArrowRight, CheckCircle, MessageSquare, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import SEOHead from "@/components/SEOHead";
 
 const Solutions = () => {
   const services = [
@@ -53,6 +54,12 @@ const Solutions = () => {
 
   return (
     <div className="min-h-screen hero-bg">
+      <SEOHead
+        title="Solutions - AI Agents, Automation, App & Web Development"
+        description="Explore Stellarc Dynamics solutions: Dominus AI assistant, intelligent automation, custom app development, and modern website creation. Transform your business with cutting-edge technology."
+        keywords="AI solutions, Dominus AI, business automation, app development, web development, AI agents, Dominus Prime, digital transformation"
+        canonicalPath="/solutions"
+      />
       <Navigation />
       {/* Hero Section */}
       <div className="py-20 px-6">

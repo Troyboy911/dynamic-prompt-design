@@ -25,6 +25,15 @@ serve(async (req) => {
       throw new Error('STRIPE_SECRET_KEY not configured');
     }
 
+    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
+    if (!webhookSecret) {
+      logStep('ERROR: STRIPE_WEBHOOK_SECRET not configured - rejecting request');
+      return new Response(
+        JSON.stringify({ error: 'Webhook secret not configured' }), 
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const stripe = new Stripe(stripeKey, {
       apiVersion: '2025-08-27.basil',
     });
@@ -37,19 +46,26 @@ serve(async (req) => {
     const body = await req.text();
     const signature = req.headers.get('stripe-signature');
 
-    // For now, we'll process without signature verification
-    // In production, you should add STRIPE_WEBHOOK_SECRET and verify
+    if (!signature) {
+      logStep('ERROR: Missing stripe-signature header');
+      return new Response(
+        JSON.stringify({ error: 'Missing stripe-signature header' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify webhook signature
     let event: Stripe.Event;
-    
     try {
-      event = JSON.parse(body) as Stripe.Event;
-      logStep('Event parsed', { type: event.type, id: event.id });
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+      logStep('Signature verified successfully', { type: event.type, id: event.id });
     } catch (err) {
-      logStep('Failed to parse event', { error: err });
-      return new Response(JSON.stringify({ error: 'Invalid payload' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      logStep('ERROR: Signature verification failed', { error: errorMessage });
+      return new Response(
+        JSON.stringify({ error: 'Invalid signature' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Handle different event types

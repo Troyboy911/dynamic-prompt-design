@@ -7,11 +7,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Input validation schema
+// Input validation schema - userId removed, will be extracted from JWT
 const requestSchema = z.object({
   prompt: z.string().min(1, "Prompt is required").max(10000, "Prompt too long"),
   model: z.string().max(100).optional().default('sonar-reasoning-pro'),
-  userId: z.string().uuid("Invalid user ID format")
 });
 
 serve(async (req) => {
@@ -20,6 +19,33 @@ serve(async (req) => {
   }
 
   try {
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Authenticate user from JWT token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = user.id; // Use verified user ID from JWT
+
     // Parse and validate input
     const rawBody = await req.json();
     const validationResult = requestSchema.safeParse(rawBody);
@@ -32,7 +58,7 @@ serve(async (req) => {
       );
     }
 
-    const { prompt, model, userId } = validationResult.data;
+    const { prompt, model } = validationResult.data;
 
     // Determine API configuration based on model
     let apiUrl: string;
@@ -67,11 +93,6 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Get conversation history from database
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { data: history } = await supabase
       .from('conversation_history')

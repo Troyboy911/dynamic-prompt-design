@@ -7,6 +7,7 @@ import FeaturedProducts from "@/components/FeaturedProducts";
 import About from "@/components/About";
 import Footer from "@/components/Footer";
 import AuthModal from "@/components/AuthModal";
+import SEOHead from "@/components/SEOHead";
 
 const Index = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -30,6 +31,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen hero-bg">
+      <SEOHead
+        title="AI Agents, Automation & App Development"
+        description="Transform your business with Stellarc Dynamics. We deliver cutting-edge AI agents like Dominus, intelligent automation, custom app development, and modern websites. Start your 7-day free trial today."
+        keywords="AI agents, Dominus AI, automation, app development, web development, artificial intelligence, business automation, digital transformation"
+        canonicalPath="/"
+      />
       <Navigation />
       <Hero />
       <Services />

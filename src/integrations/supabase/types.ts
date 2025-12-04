@@ -125,6 +125,72 @@ export type Database = {
         }
         Relationships: []
       }
+      email_logs: {
+        Row: {
+          clicked_at: string | null
+          email_type: string
+          error_message: string | null
+          id: string
+          opened_at: string | null
+          sent_at: string | null
+          subject: string | null
+          user_id: string | null
+        }
+        Insert: {
+          clicked_at?: string | null
+          email_type: string
+          error_message?: string | null
+          id?: string
+          opened_at?: string | null
+          sent_at?: string | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          clicked_at?: string | null
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          opened_at?: string | null
+          sent_at?: string | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          created_at: string | null
+          html_content: string
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string
+          trigger_day: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          html_content: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject: string
+          trigger_day?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          html_content?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string
+          trigger_day?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       file_metadata: {
         Row: {
           bucket_id: string | null
@@ -239,6 +305,45 @@ export type Database = {
           stripe_product_id?: string | null
           updated_at?: string | null
           usage_limit_monthly?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          converted_at: string | null
+          created_at: string | null
+          email: string
+          email_sequence_step: number | null
+          full_name: string | null
+          id: string
+          last_email_sent_at: string | null
+          trial_ends_at: string | null
+          trial_started_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          converted_at?: string | null
+          created_at?: string | null
+          email: string
+          email_sequence_step?: number | null
+          full_name?: string | null
+          id: string
+          last_email_sent_at?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          converted_at?: string | null
+          created_at?: string | null
+          email?: string
+          email_sequence_step?: number | null
+          full_name?: string | null
+          id?: string
+          last_email_sent_at?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }

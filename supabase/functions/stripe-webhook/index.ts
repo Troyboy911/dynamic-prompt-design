@@ -116,7 +116,13 @@ serve(async (req) => {
             throw subError;
           }
 
-          logStep('Subscription created successfully');
+          // Mark user as converted in profiles
+          await supabaseClient
+            .from('profiles')
+            .update({ converted_at: new Date().toISOString() })
+            .eq('id', userId);
+
+          logStep('Subscription created and user marked as converted');
         } else if (session.mode === 'payment') {
           // Handle one-time payment
           const itemType = metadata.item_type;
@@ -142,7 +148,13 @@ serve(async (req) => {
             throw purchaseError;
           }
 
-          logStep('Purchase recorded successfully');
+          // Mark user as converted in profiles
+          await supabaseClient
+            .from('profiles')
+            .update({ converted_at: new Date().toISOString() })
+            .eq('id', userId);
+
+          logStep('Purchase recorded and user marked as converted');
         }
         break;
       }

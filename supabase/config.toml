@@ -16,7 +16,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.sync-stripe-products]
-verify_jwt = false
+verify_jwt = true
 
 [functions.support-chat]
 verify_jwt = false

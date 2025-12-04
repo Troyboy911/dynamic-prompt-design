@@ -17,6 +17,25 @@ serve(async (req) => {
   }
 
   try {
+    // Validate request source - require service role key or internal secret
+    const authHeader = req.headers.get('Authorization');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    // Only allow calls from service role (internal triggers) or with valid auth
+    if (!authHeader || !authHeader.includes(serviceRoleKey || '___never_match___')) {
+      // Also check for internal API secret as fallback
+      const internalSecret = req.headers.get('x-internal-secret');
+      const expectedSecret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (internalSecret !== expectedSecret) {
+        logStep('Unauthorized request attempt');
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     const resendApiKey = Deno.env.get('resend_api_key');
     if (!resendApiKey) {
       throw new Error('RESEND_API_KEY not configured');
@@ -32,6 +51,21 @@ serve(async (req) => {
 
     if (!userId || !email) {
       throw new Error('userId and email are required');
+    }
+
+    // Verify user exists in auth.users via profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      logStep('User not found', { userId });
+      return new Response(
+        JSON.stringify({ error: 'User not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Get welcome email template

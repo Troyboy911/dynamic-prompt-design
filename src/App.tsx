@@ -4,6 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import SupportChatbot from "@/components/SupportChatbot";
+import AdsterraSocialBar from "@/components/AdsterraSocialBar";
+
+// TODO: Replace with your actual Adsterra Social Bar ad key
+const ADSTERRA_AD_KEY = "YOUR_ADSTERRA_AD_KEY";
+const ADSTERRA_PUBLISHER_ID = "YOUR_PUBLISHER_ID";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminLogin from "./pages/AdminLogin";
@@ -41,6 +46,9 @@ const AppContent = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!isAdminRoute && <SupportChatbot />}
+      {!isAdminRoute && ADSTERRA_AD_KEY !== "YOUR_ADSTERRA_AD_KEY" && (
+        <AdsterraSocialBar publisherId={ADSTERRA_PUBLISHER_ID} adKey={ADSTERRA_AD_KEY} />
+      )}
     </>
   );
 };

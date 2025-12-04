@@ -90,10 +90,10 @@ const Contact = () => {
       />
       <Navigation />
       {/* Header */}
-      <div className="py-20 px-6">
+      <div className="py-20 px-6 bg-gradient-to-b from-background/80 to-transparent">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-glow">Contact Us</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-foreground">Contact Us</h1>
+          <p className="text-xl text-foreground/80 max-w-2xl mx-auto font-medium">
             Ready to transform your business with cutting-edge technology? Let's start the conversation.
           </p>
         </div>

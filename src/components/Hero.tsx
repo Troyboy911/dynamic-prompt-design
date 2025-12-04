@@ -12,8 +12,8 @@ const Hero = () => {
         style={{ backgroundImage: `url(${heroImage})` }}
       />
       
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background/80" />
+      {/* Overlay - Stronger for better text contrast */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/70 to-background/90" />
       
       {/* Content */}
       <div className="relative z-10 text-center max-w-4xl mx-auto px-6">
@@ -22,7 +22,7 @@ const Hero = () => {
           <span className="block text-primary">DYNAMICS</span>
         </h1>
         
-        <p className="text-xl md:text-2xl mb-8 text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-xl md:text-2xl mb-8 text-foreground/80 max-w-2xl mx-auto font-medium">
           Pioneering the future through innovative apps, intelligent automations, 
           and cutting-edge AI agents that transform how businesses operate.
         </p>
@@ -42,7 +42,7 @@ const Hero = () => {
           </Link>
         </div>
         
-        <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+        <div className="mt-8 flex items-center justify-center gap-6 text-sm text-foreground/70 font-medium">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500"></span>
             7-Day Free Trial

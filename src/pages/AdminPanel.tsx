@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X, Mail, Play, Pencil, Trash2, AppWindow, RefreshCw } from "lucide-react";
+import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X, Mail, Play, Pencil, Trash2, AppWindow, RefreshCw, Server } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import EmailCampaignsTab from "@/components/admin/EmailCampaignsTab";
+import MCPServersTab from "@/components/admin/MCPServersTab";
 import { ConfigModal, RunModal, DeleteConfirmModal } from "@/components/admin/ConfigModal";
 
 interface AutomationLog {
@@ -771,10 +772,14 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="agent" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-11">
+          <TabsList className="grid w-full grid-cols-12">
             <TabsTrigger value="agent" className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
               AI Agent
+            </TabsTrigger>
+            <TabsTrigger value="mcp" className="flex items-center gap-2">
+              <Server className="w-4 h-4" />
+              MCP
             </TabsTrigger>
             <TabsTrigger value="emails" className="flex items-center gap-2">
               <Mail className="w-4 h-4" />
@@ -928,6 +933,11 @@ const AdminPanel = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* MCP Servers Tab */}
+          <TabsContent value="mcp">
+            <MCPServersTab />
           </TabsContent>
 
           {/* Email Campaigns Tab */}

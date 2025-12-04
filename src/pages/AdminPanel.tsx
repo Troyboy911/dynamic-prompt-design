@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X, Mail, Play, Pencil, Trash2, AppWindow } from "lucide-react";
+import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X, Mail, Play, Pencil, Trash2, AppWindow, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import EmailCampaignsTab from "@/components/admin/EmailCampaignsTab";
 import { ConfigModal, RunModal, DeleteConfirmModal } from "@/components/admin/ConfigModal";
@@ -108,6 +108,7 @@ const AdminPanel = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [runResult, setRunResult] = useState<string>('');
+  const [isSyncingStripe, setIsSyncingStripe] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -721,6 +722,36 @@ const AdminPanel = () => {
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleSyncStripe = async () => {
+    setIsSyncingStripe(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase.functions.invoke('sync-stripe-products', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Stripe Sync Complete",
+        description: `Synced ${data.synced?.pricing_tiers?.length || 0} tiers, ${data.synced?.scrapers?.length || 0} scrapers, ${data.synced?.automations?.length || 0} automations`,
+      });
+    } catch (error: any) {
+      console.error('Stripe sync error:', error);
+      toast({
+        title: "Sync Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingStripe(false);
     }
   };
 
@@ -1415,7 +1446,7 @@ const AdminPanel = () => {
                   Configure global website settings and preferences
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label>Site Title</Label>
                   <Input defaultValue="Stellarc Dynamics" />
@@ -1425,6 +1456,32 @@ const AdminPanel = () => {
                   <Textarea defaultValue="Pioneering the future through innovative apps, automations, and AI agents." />
                 </div>
                 <Button className="glow-effect">Update Settings</Button>
+                
+                {/* Stripe Sync Section */}
+                <div className="border-t border-border pt-6 mt-6">
+                  <h3 className="text-lg font-semibold mb-2">Stripe Integration</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Sync all pricing tiers, scrapers, and automations with Stripe products and prices.
+                  </p>
+                  <Button 
+                    onClick={handleSyncStripe} 
+                    disabled={isSyncingStripe}
+                    variant="outline"
+                    className="border-primary/50"
+                  >
+                    {isSyncingStripe ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Syncing with Stripe...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Sync Products with Stripe
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -17,6 +17,25 @@ serve(async (req) => {
   }
 
   try {
+    // Validate request source - require service role key for cron jobs
+    const authHeader = req.headers.get('Authorization');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    // Allow calls from cron (which use anon key in Authorization header) or service role
+    const isValidCronCall = authHeader?.includes(anonKey || '');
+    const isServiceRole = authHeader?.includes(serviceRoleKey || '___never_match___');
+    const internalSecret = req.headers.get('x-internal-secret');
+    const hasValidSecret = internalSecret === serviceRoleKey;
+    
+    if (!isValidCronCall && !isServiceRole && !hasValidSecret) {
+      logStep('Unauthorized request attempt');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const resendApiKey = Deno.env.get('resend_api_key');
     if (!resendApiKey) {
       throw new Error('RESEND_API_KEY not configured');

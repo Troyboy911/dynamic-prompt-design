@@ -83,31 +83,59 @@ serve(async (req) => {
 
     const { prompt, model, automationConfig } = validationResult.data;
 
-    // Default to OpenRouter
-    let apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-    let apiKey = Deno.env.get('OPENROUTER_API_KEY') || Deno.env.get('openrouter_api_key') || '';
-    let apiModel = OPENROUTER_MODELS[model] || OPENROUTER_MODELS['openrouter/auto'] || 'openrouter/auto';
+    // Determine API provider and model
+    let apiUrl = '';
+    let apiKey = '';
+    let apiModel = '';
 
-    // Fallback to other providers if OpenRouter not configured
-    if (!apiKey) {
-      if (model.startsWith('sonar')) {
-        apiUrl = 'https://api.perplexity.ai/chat/completions';
-        apiKey = Deno.env.get('perplexity_api_key') || '';
-        apiModel = model;
-      } else if (model.startsWith('gpt-')) {
-        apiUrl = 'https://api.openai.com/v1/chat/completions';
-        apiKey = Deno.env.get('openai_api_key') || '';
-        apiModel = model;
-      } else if (model.startsWith('gemini')) {
-        apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-        apiKey = Deno.env.get('LOVABLE_API_KEY') || '';
-        apiModel = `google/${model}`;
-      } else {
-        // Final fallback to Lovable AI
-        apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-        apiKey = Deno.env.get('LOVABLE_API_KEY') || '';
+    const openrouterKey = Deno.env.get('OPENROUTER_API_KEY') || Deno.env.get('openrouter_api_key') || '';
+    const lovableKey = Deno.env.get('LOVABLE_API_KEY') || '';
+    const perplexityKey = Deno.env.get('perplexity_api_key') || '';
+    const openaiKey = Deno.env.get('openai_api_key') || '';
+
+    // Route based on model prefix and available keys
+    if (model.startsWith('openrouter/') && openrouterKey) {
+      // Use OpenRouter if key is available
+      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+      apiKey = openrouterKey;
+      apiModel = OPENROUTER_MODELS[model] || 'openrouter/auto';
+    } else if (model.startsWith('sonar') && perplexityKey) {
+      // Perplexity models
+      apiUrl = 'https://api.perplexity.ai/chat/completions';
+      apiKey = perplexityKey;
+      apiModel = model;
+    } else if (model.startsWith('openai/') && openaiKey) {
+      // OpenAI direct models
+      apiUrl = 'https://api.openai.com/v1/chat/completions';
+      apiKey = openaiKey;
+      apiModel = model.replace('openai/', '');
+    } else if (model.startsWith('claude-') && openrouterKey) {
+      // Claude via OpenRouter
+      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+      apiKey = openrouterKey;
+      apiModel = `anthropic/${model}`;
+    } else if (model.startsWith('llama-') && openrouterKey) {
+      // Llama via OpenRouter  
+      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+      apiKey = openrouterKey;
+      apiModel = `meta-llama/${model}-instruct`;
+    } else if (lovableKey) {
+      // Fallback to Lovable AI Gateway with supported models
+      apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+      apiKey = lovableKey;
+      // Map to Lovable AI supported models
+      if (model.includes('claude') || model.includes('sonnet')) {
+        apiModel = 'google/gemini-2.5-pro'; // Best reasoning alternative
+      } else if (model.includes('gpt-5') || model.includes('gpt5')) {
+        apiModel = 'openai/gpt-5';
+      } else if (model.includes('gpt-4')) {
+        apiModel = 'openai/gpt-5-mini';
+      } else if (model.includes('gemini')) {
         apiModel = 'google/gemini-2.5-flash';
+      } else {
+        apiModel = 'google/gemini-2.5-flash'; // Default fast model
       }
+      console.log(`Fallback to Lovable AI: ${model} -> ${apiModel}`);
     }
 
     if (!apiKey) {

@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X } from "lucide-react";
+import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import EmailCampaignsTab from "@/components/admin/EmailCampaignsTab";
 
 interface AutomationLog {
   id: string;
@@ -487,10 +488,14 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="agent" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-10">
+          <TabsList className="grid w-full grid-cols-11">
             <TabsTrigger value="agent" className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
               AI Agent
+            </TabsTrigger>
+            <TabsTrigger value="emails" className="flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Emails
             </TabsTrigger>
             <TabsTrigger value="scrapers" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
@@ -636,6 +641,11 @@ const AdminPanel = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Email Campaigns Tab */}
+          <TabsContent value="emails">
+            <EmailCampaignsTab />
           </TabsContent>
 
           {/* Scrapers Tab */}

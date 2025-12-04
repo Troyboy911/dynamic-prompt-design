@@ -88,7 +88,7 @@ const AdminPanel = () => {
   const [agentResponse, setAgentResponse] = useState("");
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("sonar-reasoning-pro");
+  const [selectedModel, setSelectedModel] = useState("openrouter/auto");
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
   const [scrapers, setScrapers] = useState<Scraper[]>([]);
   const [automations, setAutomations] = useState<Automation[]>([]);
@@ -839,17 +839,21 @@ const AdminPanel = () => {
                         <SelectValue placeholder="Select AI model" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="sonar">Perplexity Sonar (Fast)</SelectItem>
-                        <SelectItem value="sonar-pro">Perplexity Sonar Pro</SelectItem>
-                        <SelectItem value="sonar-reasoning">Perplexity Reasoning</SelectItem>
-                        <SelectItem value="sonar-reasoning-pro">Perplexity Reasoning Pro (Default)</SelectItem>
-                        <SelectItem value="gpt-5">OpenAI GPT-5</SelectItem>
-                        <SelectItem value="gpt-5-mini">OpenAI GPT-5 Mini</SelectItem>
-                        <SelectItem value="gpt-4.1">OpenAI GPT-4.1</SelectItem>
-                        <SelectItem value="gemini-2.5-pro">Google Gemini 2.5 Pro</SelectItem>
-                        <SelectItem value="gemini-2.5-flash">Google Gemini 2.5 Flash</SelectItem>
-                        <SelectItem value="openrouter-claude">OpenRouter Claude Sonnet</SelectItem>
-                        <SelectItem value="openrouter-gpt">OpenRouter GPT-4</SelectItem>
+                        <SelectItem value="openrouter/auto">OpenRouter Auto (Best Available)</SelectItem>
+                        <SelectItem value="openrouter/claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                        <SelectItem value="openrouter/claude-3-opus">Claude 3 Opus</SelectItem>
+                        <SelectItem value="openrouter/gpt-4o">GPT-4o</SelectItem>
+                        <SelectItem value="openrouter/gpt-4o-mini">GPT-4o Mini</SelectItem>
+                        <SelectItem value="openrouter/gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                        <SelectItem value="openrouter/llama-3.1-405b">Llama 3.1 405B</SelectItem>
+                        <SelectItem value="openrouter/llama-3.1-70b">Llama 3.1 70B</SelectItem>
+                        <SelectItem value="openrouter/mistral-large">Mistral Large</SelectItem>
+                        <SelectItem value="openrouter/mixtral-8x7b">Mixtral 8x7B</SelectItem>
+                        <SelectItem value="openrouter/gemini-pro">Gemini Pro 1.5</SelectItem>
+                        <SelectItem value="openrouter/deepseek-coder">DeepSeek Coder</SelectItem>
+                        <SelectItem value="openrouter/qwen-72b">Qwen 2 72B</SelectItem>
+                        <SelectItem value="gemini-2.5-flash">Lovable AI (Gemini Flash)</SelectItem>
+                        <SelectItem value="sonar-reasoning-pro">Perplexity Reasoning Pro</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

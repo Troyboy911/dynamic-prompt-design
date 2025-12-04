@@ -7,10 +7,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Input validation schema - userId removed, will be extracted from JWT
+// OpenRouter available models
+const OPENROUTER_MODELS: Record<string, string> = {
+  'openrouter/auto': 'openrouter/auto',
+  'openrouter/claude-3.5-sonnet': 'anthropic/claude-3.5-sonnet',
+  'openrouter/claude-3-opus': 'anthropic/claude-3-opus',
+  'openrouter/gpt-4-turbo': 'openai/gpt-4-turbo',
+  'openrouter/gpt-4o': 'openai/gpt-4o',
+  'openrouter/gpt-4o-mini': 'openai/gpt-4o-mini',
+  'openrouter/llama-3.1-70b': 'meta-llama/llama-3.1-70b-instruct',
+  'openrouter/llama-3.1-405b': 'meta-llama/llama-3.1-405b-instruct',
+  'openrouter/mixtral-8x7b': 'mistralai/mixtral-8x7b-instruct',
+  'openrouter/mistral-large': 'mistralai/mistral-large',
+  'openrouter/gemini-pro': 'google/gemini-pro-1.5',
+  'openrouter/deepseek-coder': 'deepseek/deepseek-coder',
+  'openrouter/qwen-72b': 'qwen/qwen-2-72b-instruct',
+};
+
+// Input validation schema
 const requestSchema = z.object({
   prompt: z.string().min(1, "Prompt is required").max(10000, "Prompt too long"),
-  model: z.string().max(100).optional().default('sonar-reasoning-pro'),
+  model: z.string().max(100).optional().default('openrouter/auto'),
+  automationConfig: z.object({
+    name: z.string().optional(),
+    type: z.string().optional(),
+    description: z.string().optional(),
+    config: z.record(z.any()).optional(),
+  }).optional(),
 });
 
 serve(async (req) => {
@@ -44,7 +67,7 @@ serve(async (req) => {
       );
     }
 
-    const userId = user.id; // Use verified user ID from JWT
+    const userId = user.id;
 
     // Parse and validate input
     const rawBody = await req.json();
@@ -58,38 +81,38 @@ serve(async (req) => {
       );
     }
 
-    const { prompt, model } = validationResult.data;
+    const { prompt, model, automationConfig } = validationResult.data;
 
-    // Determine API configuration based on model
-    let apiUrl: string;
-    let apiKey: string;
-    let apiModel: string;
+    // Default to OpenRouter
+    let apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+    let apiKey = Deno.env.get('OPENROUTER_API_KEY') || Deno.env.get('openrouter_api_key') || '';
+    let apiModel = OPENROUTER_MODELS[model] || OPENROUTER_MODELS['openrouter/auto'] || 'openrouter/auto';
 
-    if (model.startsWith('sonar')) {
-      apiUrl = 'https://api.perplexity.ai/chat/completions';
-      apiKey = Deno.env.get('perplexity_api_key') || '';
-      apiModel = model;
-    } else if (model.startsWith('gpt-')) {
-      apiUrl = 'https://api.openai.com/v1/chat/completions';
-      apiKey = Deno.env.get('openai_api_key') || '';
-      apiModel = model;
-    } else if (model.startsWith('gemini')) {
-      apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-      apiKey = Deno.env.get('LOVABLE_API_KEY') || '';
-      apiModel = `google/${model}`;
-    } else if (model.startsWith('openrouter')) {
-      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-      apiKey = Deno.env.get('openrouter_api_key') || '';
-      apiModel = model.replace('openrouter/', '');
-    } else {
-      apiUrl = 'https://api.perplexity.ai/chat/completions';
-      apiKey = Deno.env.get('perplexity_api_key') || '';
-      apiModel = 'sonar-reasoning-pro';
+    // Fallback to other providers if OpenRouter not configured
+    if (!apiKey) {
+      if (model.startsWith('sonar')) {
+        apiUrl = 'https://api.perplexity.ai/chat/completions';
+        apiKey = Deno.env.get('perplexity_api_key') || '';
+        apiModel = model;
+      } else if (model.startsWith('gpt-')) {
+        apiUrl = 'https://api.openai.com/v1/chat/completions';
+        apiKey = Deno.env.get('openai_api_key') || '';
+        apiModel = model;
+      } else if (model.startsWith('gemini')) {
+        apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+        apiKey = Deno.env.get('LOVABLE_API_KEY') || '';
+        apiModel = `google/${model}`;
+      } else {
+        // Final fallback to Lovable AI
+        apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+        apiKey = Deno.env.get('LOVABLE_API_KEY') || '';
+        apiModel = 'google/gemini-2.5-flash';
+      }
     }
 
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'AI service not configured' }),
+        JSON.stringify({ error: 'No AI service configured. Please add OPENROUTER_API_KEY.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -102,7 +125,7 @@ serve(async (req) => {
       .limit(20);
 
     // Filter history to ensure alternating user/assistant messages
-    const filteredHistory: any[] = [];
+    const filteredHistory: { role: string; content: string }[] = [];
     let lastRole = 'system';
     
     if (history) {
@@ -119,8 +142,55 @@ serve(async (req) => {
       filteredHistory.pop();
     }
 
+    // Build automation context if provided
+    let automationContext = '';
+    if (automationConfig) {
+      automationContext = `
+**AUTOMATION CONTEXT:**
+- Name: ${automationConfig.name || 'Custom Automation'}
+- Type: ${automationConfig.type || 'general'}
+- Description: ${automationConfig.description || 'No description provided'}
+- Configuration: ${JSON.stringify(automationConfig.config || {})}
+
+You MUST follow the automation configuration above. Execute the steps as defined.
+`;
+    }
+
+    // Enhanced system prompt
+    const systemPrompt = `You are an advanced Admin Automation Agent for Stellarc Dynamics with comprehensive capabilities.
+
+**CRITICAL INSTRUCTIONS:**
+1. ALWAYS follow the exact instructions provided in automation configurations
+2. If you need ANY information to complete a task that wasn't provided, you MUST ask the user for it
+3. Do NOT make assumptions about missing data - always ask
+4. Execute tasks step-by-step and report progress
+5. If an automation has specific steps defined, follow them in order
+
+${automationContext}
+
+**CAPABILITIES:**
+- Web scraping and browser automation via Playwright
+- MCP server connections (Notion, GitHub, Slack, etc.)
+- API integrations with any REST endpoint
+- Content generation (articles, emails, code, documentation)
+- Data analysis (statistical, trends, predictions, sentiment)
+- Workflow automation and scheduling
+- File processing (PDF, images, documents)
+- Database operations
+- Email campaigns
+- Image generation
+
+**YOUR APPROACH:**
+1. Analyze the request and identify ALL required information
+2. If ANY information is missing, ask the user for it clearly
+3. Break complex tasks into manageable steps
+4. Report results with actionable details
+5. Suggest optimizations and next steps
+
+REMEMBER: Never proceed with incomplete information. Always ask for clarification when needed.`;
+
     const messages = [
-      { role: 'system', content: 'You are a helpful AI assistant for Stellarc Dynamics admin panel. Help with website management, content creation, automation, and technical tasks.' },
+      { role: 'system', content: systemPrompt },
       ...filteredHistory,
       { role: 'user', content: prompt }
     ];
@@ -139,13 +209,15 @@ serve(async (req) => {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://stellarcdynamics.com',
+        'X-Title': 'Stellarc Dynamics Admin Agent',
       },
       body: JSON.stringify({
         model: apiModel,
         messages,
         stream: true,
-        temperature: 0.7,
-        max_tokens: 2000,
+        temperature: 0.5,
+        max_tokens: 4000,
       }),
     });
 

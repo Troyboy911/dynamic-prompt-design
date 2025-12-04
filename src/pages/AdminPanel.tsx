@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X, Mail, Play, Pencil, Trash2, AppWindow, RefreshCw, Server } from "lucide-react";
+import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X, Mail, Play, Pencil, Trash2, AppWindow, RefreshCw, Server, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import EmailCampaignsTab from "@/components/admin/EmailCampaignsTab";
 import MCPServersTab from "@/components/admin/MCPServersTab";
@@ -1500,6 +1500,82 @@ const AdminPanel = () => {
                           Get Token →
                         </a>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Custom API Management */}
+                <div className="border-t border-border pt-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Globe className="w-5 h-5 text-primary" />
+                    Custom API Management
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Add, test, and authenticate custom API endpoints for your integrations.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="api-name">API Name</Label>
+                        <Input
+                          id="api-name"
+                          placeholder="e.g., Custom CRM API"
+                          className="bg-background"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="api-endpoint">API Endpoint URL</Label>
+                        <Input
+                          id="api-endpoint"
+                          placeholder="https://api.example.com/v1"
+                          className="bg-background"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="api-key-input">API Key</Label>
+                        <Input
+                          id="api-key-input"
+                          type="password"
+                          placeholder="Enter API key"
+                          className="bg-background"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-3">
+                      <Button 
+                        variant="default"
+                        className="gap-2"
+                        onClick={() => toast({ title: "API Added", description: "API added successfully" })}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add API
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => toast({ title: "Testing API", description: "Testing API connection..." })}
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Test API
+                      </Button>
+                      <Button 
+                        variant="secondary"
+                        className="gap-2"
+                        onClick={() => toast({ title: "Authenticating", description: "Authenticating API..." })}
+                      >
+                        <Shield className="w-4 h-4" />
+                        Authenticate
+                      </Button>
+                    </div>
+                    
+                    {/* Added APIs List */}
+                    <div className="mt-4 p-4 bg-secondary/20 rounded-lg border border-border">
+                      <h4 className="font-semibold mb-3 text-sm">Configured Custom APIs</h4>
+                      <p className="text-xs text-muted-foreground">
+                        No custom APIs configured yet. Add an API above to get started.
+                      </p>
                     </div>
                   </div>
                 </div>

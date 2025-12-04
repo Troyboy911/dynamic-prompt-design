@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.support-chat]
 verify_jwt = false
+
+[functions.send-welcome-email]
+verify_jwt = false
+
+[functions.process-email-sequence]
+verify_jwt = false

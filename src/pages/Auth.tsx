@@ -90,7 +90,7 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -103,10 +103,29 @@ const Auth = () => {
 
       if (error) throw error;
 
-              toast({
+      // Trigger welcome email via edge function
+      if (data.user) {
+        try {
+          const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+            body: {
+              userId: data.user.id,
+              email: data.user.email,
+              fullName: data.user.user_metadata?.full_name || '',
+            },
+          });
+          
+          if (emailError) {
+            console.error('Welcome email error:', emailError);
+          }
+        } catch (emailErr) {
+          console.error('Failed to send welcome email:', emailErr);
+        }
+      }
+
+      toast({
         title: showFreeTrial ? "🎉 Free Trial Activated!" : "Account Created!",
         description: showFreeTrial 
-          ? "Welcome! You now have 7 days free access to our featured automation tools."
+          ? "Welcome! You now have 7 days free access to our featured automation tools. Check your email for details!"
           : "Your account has been created. Check your email to verify.",
       });
       

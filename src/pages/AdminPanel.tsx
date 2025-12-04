@@ -1360,23 +1360,155 @@ const AdminPanel = () => {
           <TabsContent value="apis">
             <Card className="card-glass">
               <CardHeader>
-                <CardTitle>Backend API Status</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-primary" />
+                  API Keys & MCP Configuration
+                </CardTitle>
                 <CardDescription>
-                  API keys are securely stored in the backend
+                  Configure API keys for MCP servers and external integrations. Keys are securely stored in the backend.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-                  <h4 className="font-semibold mb-2 text-green-400">✓ OpenAI API Configured</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Your OpenAI API key is securely stored and ready for AI agent operations.
-                  </p>
+              <CardContent className="space-y-6">
+                {/* Configured APIs Status */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <h4 className="font-semibold mb-1 text-green-400 flex items-center gap-2">
+                      <Bot className="w-4 h-4" />
+                      OpenAI API
+                    </h4>
+                    <p className="text-xs text-muted-foreground">Configured and ready</p>
+                  </div>
+                  <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <h4 className="font-semibold mb-1 text-green-400 flex items-center gap-2">
+                      <Bot className="w-4 h-4" />
+                      Perplexity API
+                    </h4>
+                    <p className="text-xs text-muted-foreground">Configured and ready</p>
+                  </div>
+                  <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <h4 className="font-semibold mb-1 text-green-400 flex items-center gap-2">
+                      <Bot className="w-4 h-4" />
+                      OpenRouter API
+                    </h4>
+                    <p className="text-xs text-muted-foreground">Configured and ready</p>
+                  </div>
+                  <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <h4 className="font-semibold mb-1 text-green-400 flex items-center gap-2">
+                      <Bot className="w-4 h-4" />
+                      Stripe API
+                    </h4>
+                    <p className="text-xs text-muted-foreground">Configured and ready</p>
+                  </div>
                 </div>
 
-                <div className="p-4 bg-secondary/20 rounded-lg">
-                  <h4 className="font-semibold mb-2 text-primary">Secure Configuration</h4>
+                {/* MCP Server API Keys */}
+                <div className="border-t border-border pt-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Server className="w-5 h-5 text-primary" />
+                    MCP Server API Keys
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Configure additional API keys to enable MCP server integrations. Contact the admin to add keys via Lovable Cloud secrets.
+                  </p>
+                  
+                  <div className="grid gap-4">
+                    {/* Notion API Key */}
+                    <div className="p-4 bg-secondary/20 rounded-lg border border-border">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-muted rounded-lg">
+                            <FileText className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Notion Integration</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Connect to Notion workspace for document and database management
+                            </p>
+                            <div className="mt-2 text-xs text-yellow-500 flex items-center gap-1">
+                              <Settings className="w-3 h-3" />
+                              Not configured - Add NOTION_API_KEY secret in Lovable Cloud
+                            </div>
+                          </div>
+                        </div>
+                        <a 
+                          href="https://www.notion.so/my-integrations" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Get API Key →
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* GitHub Token */}
+                    <div className="p-4 bg-secondary/20 rounded-lg border border-border">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-muted rounded-lg">
+                            <Settings className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">GitHub Integration</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Repository management, issues, PRs, and code operations
+                            </p>
+                            <div className="mt-2 text-xs text-yellow-500 flex items-center gap-1">
+                              <Settings className="w-3 h-3" />
+                              Not configured - Add GITHUB_TOKEN secret in Lovable Cloud
+                            </div>
+                          </div>
+                        </div>
+                        <a 
+                          href="https://github.com/settings/tokens" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Get Token →
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Slack Token */}
+                    <div className="p-4 bg-secondary/20 rounded-lg border border-border">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-muted rounded-lg">
+                            <Settings className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Slack Integration</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Messaging, channel management, and team notifications
+                            </p>
+                            <div className="mt-2 text-xs text-yellow-500 flex items-center gap-1">
+                              <Settings className="w-3 h-3" />
+                              Not configured - Add SLACK_BOT_TOKEN secret in Lovable Cloud
+                            </div>
+                          </div>
+                        </div>
+                        <a 
+                          href="https://api.slack.com/apps" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Get Token →
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security Note */}
+                <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
+                  <h4 className="font-semibold mb-2 text-primary flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    Secure Configuration
+                  </h4>
                   <p className="text-sm text-muted-foreground">
-                    All API keys are stored securely in the backend and never exposed to the frontend.
+                    All API keys are stored securely in the backend via Lovable Cloud secrets and never exposed to the frontend.
                     This prevents unauthorized access and ensures your credentials remain safe.
                   </p>
                 </div>

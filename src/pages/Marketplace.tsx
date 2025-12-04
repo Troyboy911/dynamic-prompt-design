@@ -480,14 +480,29 @@ const Marketplace = () => {
                     </p>
                     <Button 
                       size="lg" 
-                      className="bg-gradient-to-r from-yellow-500 via-primary to-purple-500 hover:opacity-90"
+                      className="bg-gradient-to-r from-yellow-500 via-primary to-purple-500 hover:opacity-90 text-white"
                       onClick={() => {
-                        const pricingTab = document.querySelector('[value="pricing"]') as HTMLElement;
-                        pricingTab?.click();
+                        // Find the Premium tier and subscribe to it directly
+                        const premiumTier = pricingTiers.find(t => t.is_premium);
+                        if (premiumTier) {
+                          handleSubscribe(premiumTier.id);
+                        } else {
+                          navigate('/auth?returnTo=/marketplace');
+                        }
                       }}
+                      disabled={processingPayment !== null}
                     >
-                      <Crown className="w-5 h-5 mr-2" />
-                      Unlock Elite Access
+                      {processingPayment ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Crown className="w-5 h-5 mr-2" />
+                          Unlock Elite Access - $149/mo
+                        </>
+                      )}
                     </Button>
                   </div>
 

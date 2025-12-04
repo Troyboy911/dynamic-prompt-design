@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X, Mail } from "lucide-react";
+import { LogOut, Bot, Upload, Settings, FileText, Loader2, Users, Shield, Plus, Megaphone, Wrench, X, Mail, Play, Pencil, Trash2, AppWindow } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import EmailCampaignsTab from "@/components/admin/EmailCampaignsTab";
+import { ConfigModal, RunModal, DeleteConfirmModal } from "@/components/admin/ConfigModal";
 
 interface AutomationLog {
   id: string;
@@ -96,6 +97,18 @@ const AdminPanel = () => {
   const [showToolBuilder, setShowToolBuilder] = useState(false);
   const [newTool, setNewTool] = useState({ name: '', description: '', tool_type: 'custom', config: '{}' });
   const [isSavingTool, setIsSavingTool] = useState(false);
+  
+  // Modal states
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [runModalOpen, setRunModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedItemType, setSelectedItemType] = useState<'scraper' | 'automation' | 'protocol' | 'tool'>('scraper');
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [runResult, setRunResult] = useState<string>('');
+  
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -265,6 +278,245 @@ const AdminPanel = () => {
       });
     } finally {
       setIsSavingTool(false);
+    }
+  };
+
+  // Open config modal for scrapers/automations/protocols/tools
+  const openConfigModal = (item: any, type: 'scraper' | 'automation' | 'protocol' | 'tool') => {
+    setSelectedItem(item);
+    setSelectedItemType(type);
+    setConfigModalOpen(true);
+  };
+
+  // Open run modal
+  const openRunModal = (item: any, type: 'scraper' | 'automation' | 'protocol' | 'tool') => {
+    setSelectedItem(item);
+    setSelectedItemType(type);
+    setRunResult('');
+    setRunModalOpen(true);
+  };
+
+  // Open delete modal
+  const openDeleteModal = (item: any, type: 'scraper' | 'automation' | 'protocol' | 'tool') => {
+    setSelectedItem(item);
+    setSelectedItemType(type);
+    setDeleteModalOpen(true);
+  };
+
+  // Save configuration
+  const handleSaveConfig = async (name: string, config: string, status: string) => {
+    if (!selectedItem) return;
+    setIsSavingConfig(true);
+
+    try {
+      let parsedConfig = {};
+      try {
+        parsedConfig = JSON.parse(config);
+      } catch {
+        throw new Error('Invalid JSON configuration');
+      }
+
+      const tableName = selectedItemType === 'scraper' ? 'scrapers' : 
+                        selectedItemType === 'tool' ? 'playground_tools' : 'automations';
+
+      const updateData: any = {
+        name,
+        config: parsedConfig,
+      };
+
+      if (selectedItemType !== 'tool') {
+        updateData.status = status;
+      }
+
+      const { error } = await supabase
+        .from(tableName)
+        .update(updateData)
+        .eq('id', selectedItem.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Configuration Saved",
+        description: `${name} has been updated successfully`,
+      });
+
+      setConfigModalOpen(false);
+      
+      // Refresh data
+      if (selectedItemType === 'scraper') fetchScrapers();
+      else if (selectedItemType === 'automation') fetchAutomations();
+      else if (selectedItemType === 'protocol') fetchAdvertiseAutomations();
+      else fetchPlaygroundTools();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
+  // Run scraper/automation/protocol
+  const handleRunItem = async () => {
+    if (!selectedItem) return;
+    setIsRunning(true);
+    setRunResult('');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
+
+      const taskDescription = selectedItemType === 'scraper' 
+        ? `Run web scraper: ${selectedItem.name}. Type: ${selectedItem.scraper_type}. Config: ${JSON.stringify(selectedItem.config || {})}`
+        : `Execute automation: ${selectedItem.name}. Type: ${selectedItem.automation_type}. Config: ${JSON.stringify(selectedItem.config || {})}`;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-agent-stream`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            prompt: taskDescription,
+            model: selectedModel,
+            taskType: selectedItemType,
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to execute task');
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullResult = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullResult += parsed.content;
+                  setRunResult(fullResult);
+                }
+              } catch {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+      }
+
+      // Log the execution
+      await supabase.from('automation_logs').insert({
+        task_type: `${selectedItemType}_execution`,
+        status: 'success',
+        input_data: { item_id: selectedItem.id, item_name: selectedItem.name },
+        output_data: { result: fullResult },
+      });
+
+      toast({
+        title: "Execution Complete",
+        description: `${selectedItem.name} has finished running`,
+      });
+
+      fetchLogs();
+    } catch (error: any) {
+      setRunResult(`Error: ${error.message}`);
+      toast({
+        title: "Execution Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  // Delete item
+  const handleDeleteItem = async () => {
+    if (!selectedItem) return;
+    setIsDeleting(true);
+
+    try {
+      const tableName = selectedItemType === 'scraper' ? 'scrapers' : 
+                        selectedItemType === 'tool' ? 'playground_tools' : 'automations';
+
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .eq('id', selectedItem.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Deleted",
+        description: `${selectedItem.name} has been deleted`,
+      });
+
+      setDeleteModalOpen(false);
+      
+      // Refresh data
+      if (selectedItemType === 'scraper') fetchScrapers();
+      else if (selectedItemType === 'automation') fetchAutomations();
+      else if (selectedItemType === 'protocol') fetchAdvertiseAutomations();
+      else fetchPlaygroundTools();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Add tool to app (convert playground tool to automation)
+  const handleAddToolToApp = async (tool: PlaygroundTool) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('automations')
+        .insert({
+          user_id: session.user.id,
+          name: tool.name,
+          description: tool.description,
+          automation_type: tool.tool_type,
+          config: tool.config,
+          status: 'active',
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Added to App",
+        description: `${tool.name} has been added to your automations`,
+      });
+
+      fetchAutomations();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -679,9 +931,16 @@ const AdminPanel = () => {
                             </span>
                           </div>
                         </div>
-                        <Button size="sm" variant="outline">
-                          Configure
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => openRunModal(scraper, 'scraper')}>
+                            <Play className="w-3 h-3 mr-1" />
+                            Run
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => openConfigModal(scraper, 'scraper')}>
+                            <Pencil className="w-3 h-3 mr-1" />
+                            Configure
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -722,10 +981,12 @@ const AdminPanel = () => {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => openRunModal(automation, 'automation')}>
+                            <Play className="w-3 h-3 mr-1" />
                             Run
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => openConfigModal(automation, 'automation')}>
+                            <Pencil className="w-3 h-3 mr-1" />
                             Edit
                           </Button>
                         </div>
@@ -852,12 +1113,22 @@ const AdminPanel = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="outline">
+                            <div className="flex gap-2 flex-wrap justify-end">
+                              <Button size="sm" variant="outline" onClick={() => openRunModal(tool, 'tool')}>
+                                <Play className="w-3 h-3 mr-1" />
                                 Test
                               </Button>
-                              <Button size="sm" variant="outline">
-                                Sync to Airtable
+                              <Button size="sm" variant="outline" onClick={() => openConfigModal(tool, 'tool')}>
+                                <Pencil className="w-3 h-3 mr-1" />
+                                Edit
+                              </Button>
+                              <Button size="sm" className="bg-green-500/20 text-green-400 hover:bg-green-500/30" onClick={() => handleAddToolToApp(tool)}>
+                                <AppWindow className="w-3 h-3 mr-1" />
+                                Add to App
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={() => openDeleteModal(tool, 'tool')}>
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Delete
                               </Button>
                             </div>
                           </div>
@@ -928,10 +1199,12 @@ const AdminPanel = () => {
                               )}
                             </div>
                             <div className="flex flex-col gap-2">
-                              <Button size="sm" className="bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/40">
+                              <Button size="sm" className="bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/40" onClick={() => openConfigModal(automation, 'protocol')}>
+                                <Pencil className="w-3 h-3 mr-1" />
                                 Configure
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button size="sm" variant="outline" onClick={() => openRunModal(automation, 'protocol')}>
+                                <Play className="w-3 h-3 mr-1" />
                                 Run Protocol
                               </Button>
                             </div>
@@ -946,8 +1219,6 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* Users & Role Management Tab */}
           <TabsContent value="users">
             <Card className="card-glass">
               <CardHeader>
@@ -1159,6 +1430,48 @@ const AdminPanel = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Config Modal */}
+      {selectedItem && (
+        <ConfigModal
+          open={configModalOpen}
+          onOpenChange={setConfigModalOpen}
+          title={`Configure ${selectedItem.name}`}
+          description={selectedItem.description}
+          name={selectedItem.name}
+          configJson={JSON.stringify(selectedItem.config || {}, null, 2)}
+          status={selectedItem.status || 'active'}
+          itemType={selectedItemType}
+          onSave={handleSaveConfig}
+          isSaving={isSavingConfig}
+        />
+      )}
+
+      {/* Run Modal */}
+      {selectedItem && (
+        <RunModal
+          open={runModalOpen}
+          onOpenChange={setRunModalOpen}
+          title={`Run ${selectedItemType.charAt(0).toUpperCase() + selectedItemType.slice(1)}`}
+          itemName={selectedItem.name}
+          itemType={selectedItemType}
+          onRun={handleRunItem}
+          isRunning={isRunning}
+          result={runResult}
+        />
+      )}
+
+      {/* Delete Confirm Modal */}
+      {selectedItem && (
+        <DeleteConfirmModal
+          open={deleteModalOpen}
+          onOpenChange={setDeleteModalOpen}
+          itemName={selectedItem.name}
+          itemType={selectedItemType}
+          onConfirm={handleDeleteItem}
+          isDeleting={isDeleting}
+        />
+      )}
     </div>
   );
 };

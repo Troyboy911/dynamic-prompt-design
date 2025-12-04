@@ -7,6 +7,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// OpenRouter available models
+const OPENROUTER_MODELS = {
+  'openrouter/auto': 'openrouter/auto',
+  'openrouter/claude-3.5-sonnet': 'anthropic/claude-3.5-sonnet',
+  'openrouter/claude-3-opus': 'anthropic/claude-3-opus',
+  'openrouter/gpt-4-turbo': 'openai/gpt-4-turbo',
+  'openrouter/gpt-4o': 'openai/gpt-4o',
+  'openrouter/gpt-4o-mini': 'openai/gpt-4o-mini',
+  'openrouter/llama-3.1-70b': 'meta-llama/llama-3.1-70b-instruct',
+  'openrouter/llama-3.1-405b': 'meta-llama/llama-3.1-405b-instruct',
+  'openrouter/mixtral-8x7b': 'mistralai/mixtral-8x7b-instruct',
+  'openrouter/mistral-large': 'mistralai/mistral-large',
+  'openrouter/gemini-pro': 'google/gemini-pro-1.5',
+  'openrouter/deepseek-coder': 'deepseek/deepseek-coder',
+  'openrouter/qwen-72b': 'qwen/qwen-2-72b-instruct',
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -53,7 +70,7 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    const { prompt, taskType = 'general', model = 'sonar-reasoning-pro' } = await req.json();
+    const { prompt, taskType = 'general', model = 'openrouter/auto', automationConfig } = await req.json();
     
     if (!prompt) {
       return new Response(
@@ -64,63 +81,43 @@ serve(async (req) => {
 
     const startTime = Date.now();
     
-    // Determine provider and API configuration based on model
-    let apiUrl = '';
-    let apiKey = '';
-    let apiModel = model;
+    // Default to OpenRouter for all requests
+    let apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+    let apiKey = Deno.env.get('OPENROUTER_API_KEY') || Deno.env.get('openrouter_api_key') || '';
+    let apiModel = OPENROUTER_MODELS[model] || OPENROUTER_MODELS['openrouter/auto'] || 'openrouter/auto';
     
-    if (model.startsWith('sonar')) {
-      // Perplexity models
-      apiUrl = 'https://api.perplexity.ai/chat/completions';
-      apiKey = Deno.env.get('perplexity_api_key') || '';
-      if (!apiKey) {
-        return new Response(
-          JSON.stringify({ error: 'Perplexity API not configured' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+    // Fallback to other providers if OpenRouter not configured
+    if (!apiKey) {
+      if (model.startsWith('sonar')) {
+        apiUrl = 'https://api.perplexity.ai/chat/completions';
+        apiKey = Deno.env.get('perplexity_api_key') || '';
+        apiModel = model;
+      } else if (model.startsWith('gpt')) {
+        apiUrl = 'https://api.openai.com/v1/chat/completions';
+        apiKey = Deno.env.get('openai_api_key') || '';
+        apiModel = model;
+      } else if (model.startsWith('gemini')) {
+        apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+        apiKey = Deno.env.get('LOVABLE_API_KEY') || '';
+        apiModel = `google/${model}`;
+      } else {
+        // Final fallback to Lovable AI
+        apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+        apiKey = Deno.env.get('LOVABLE_API_KEY') || '';
+        apiModel = 'google/gemini-2.5-flash';
       }
-    } else if (model.startsWith('gpt')) {
-      // OpenAI models
-      apiUrl = 'https://api.openai.com/v1/chat/completions';
-      apiKey = Deno.env.get('openai_api_key') || '';
-      if (!apiKey) {
-        return new Response(
-          JSON.stringify({ error: 'OpenAI API not configured' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else if (model.startsWith('gemini')) {
-      // Google Gemini models
-      apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-      apiKey = Deno.env.get('LOVABLE_API_KEY') || '';
-      apiModel = `google/${model}`;
-      if (!apiKey) {
-        return new Response(
-          JSON.stringify({ error: 'Lovable AI not configured' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else if (model.startsWith('openrouter')) {
-      // OpenRouter models
-      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-      apiKey = Deno.env.get('openrouter_api_key') || '';
-      apiModel = model === 'openrouter-claude' ? 'anthropic/claude-3.5-sonnet' : 'openai/gpt-4';
-      if (!apiKey) {
-        return new Response(
-          JSON.stringify({ error: 'OpenRouter API not configured' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else {
+    }
+
+    if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'Invalid model selected' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'No AI service configured. Please add OPENROUTER_API_KEY or LOVABLE_API_KEY.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     console.log('Processing AI request:', { taskType, promptLength: prompt.length, userId, model: apiModel });
 
-    // Define comprehensive tools for all advertised services
+    // Define comprehensive tools including MCP-style connections
     const tools = [
       {
         type: "function",
@@ -132,9 +129,29 @@ serve(async (req) => {
             properties: {
               url: { type: "string", description: "URL to scrape" },
               selectors: { type: "array", items: { type: "string" }, description: "CSS selectors for specific elements" },
-              extract_type: { type: "string", enum: ["text", "html", "table", "links", "images"], description: "Type of content to extract" }
+              extract_type: { type: "string", enum: ["text", "html", "table", "links", "images", "all"], description: "Type of content to extract" },
+              pagination: { type: "boolean", description: "Whether to handle pagination" },
+              wait_for: { type: "string", description: "CSS selector to wait for before extracting" }
             },
             required: ["url", "extract_type"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "browser_automation",
+          description: "Control browser via Playwright for navigation, form filling, clicking, screenshots, and complex interactions.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["navigate", "click", "type", "screenshot", "scroll", "wait", "extract", "fill_form"] },
+              url: { type: "string", description: "URL to navigate to" },
+              selector: { type: "string", description: "CSS selector for element" },
+              value: { type: "string", description: "Value to type or select" },
+              options: { type: "object", description: "Additional options for the action" }
+            },
+            required: ["action"]
           }
         }
       },
@@ -149,9 +166,63 @@ serve(async (req) => {
               endpoint: { type: "string", description: "API endpoint URL" },
               method: { type: "string", enum: ["GET", "POST", "PUT", "DELETE", "PATCH"] },
               headers: { type: "object", description: "Request headers" },
-              body: { type: "object", description: "Request payload" }
+              body: { type: "object", description: "Request payload" },
+              auth_type: { type: "string", enum: ["none", "bearer", "api_key", "basic", "oauth2"] }
             },
             required: ["endpoint", "method"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "mcp_notion",
+          description: "Connect to Notion workspace via MCP to read/write pages, databases, and blocks.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["search", "fetch_page", "create_page", "update_page", "query_database", "create_database_entry"] },
+              query: { type: "string", description: "Search query or page ID" },
+              database_id: { type: "string", description: "Notion database ID" },
+              content: { type: "object", description: "Content to create or update" },
+              properties: { type: "object", description: "Page or entry properties" }
+            },
+            required: ["action"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "mcp_github",
+          description: "Connect to GitHub via MCP for repository operations, issues, PRs, and code management.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["list_repos", "get_repo", "create_issue", "list_issues", "create_pr", "get_file", "commit_file"] },
+              repo: { type: "string", description: "Repository name (owner/repo)" },
+              path: { type: "string", description: "File path in repository" },
+              content: { type: "string", description: "Content for file or issue/PR body" },
+              title: { type: "string", description: "Title for issue or PR" }
+            },
+            required: ["action"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "mcp_slack",
+          description: "Connect to Slack via MCP for messaging, channel management, and notifications.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["send_message", "list_channels", "search_messages", "create_channel", "upload_file"] },
+              channel: { type: "string", description: "Channel ID or name" },
+              message: { type: "string", description: "Message content" },
+              query: { type: "string", description: "Search query" }
+            },
+            required: ["action"]
           }
         }
       },
@@ -163,10 +234,11 @@ serve(async (req) => {
           parameters: {
             type: "object",
             properties: {
-              content_type: { type: "string", enum: ["article", "email", "social_post", "code", "marketing_copy", "blog_post"] },
+              content_type: { type: "string", enum: ["article", "email", "social_post", "code", "marketing_copy", "blog_post", "script", "documentation"] },
               topic: { type: "string", description: "Topic or subject for content generation" },
-              tone: { type: "string", enum: ["professional", "casual", "technical", "creative", "formal"] },
-              length: { type: "string", enum: ["short", "medium", "long"] }
+              tone: { type: "string", enum: ["professional", "casual", "technical", "creative", "formal", "friendly"] },
+              length: { type: "string", enum: ["short", "medium", "long", "custom"] },
+              format: { type: "string", description: "Output format (markdown, html, plain)" }
             },
             required: ["content_type", "topic"]
           }
@@ -181,8 +253,9 @@ serve(async (req) => {
             type: "object",
             properties: {
               data_source: { type: "string", description: "Source of data (file path, database query, API)" },
-              analysis_type: { type: "string", enum: ["statistical", "trend", "comparison", "prediction", "sentiment"] },
-              output_format: { type: "string", enum: ["report", "chart", "summary", "detailed"] }
+              analysis_type: { type: "string", enum: ["statistical", "trend", "comparison", "prediction", "sentiment", "clustering", "anomaly"] },
+              output_format: { type: "string", enum: ["report", "chart", "summary", "detailed", "json", "csv"] },
+              metrics: { type: "array", items: { type: "string" }, description: "Specific metrics to calculate" }
             },
             required: ["data_source", "analysis_type"]
           }
@@ -196,10 +269,11 @@ serve(async (req) => {
           parameters: {
             type: "object",
             properties: {
-              workflow_type: { type: "string", enum: ["email_automation", "data_sync", "report_generation", "task_scheduling", "notification_system"] },
+              workflow_type: { type: "string", enum: ["email_automation", "data_sync", "report_generation", "task_scheduling", "notification_system", "lead_nurturing", "data_pipeline"] },
               trigger: { type: "string", description: "What triggers the workflow" },
               actions: { type: "array", items: { type: "string" }, description: "List of actions to perform" },
-              schedule: { type: "string", description: "Cron expression or schedule description" }
+              schedule: { type: "string", description: "Cron expression or schedule description" },
+              conditions: { type: "object", description: "Conditional logic for workflow" }
             },
             required: ["workflow_type", "actions"]
           }
@@ -214,8 +288,9 @@ serve(async (req) => {
             type: "object",
             properties: {
               file_path: { type: "string", description: "Path to the file" },
-              operation: { type: "string", enum: ["convert", "extract_text", "compress", "merge", "split", "analyze"] },
-              output_format: { type: "string", description: "Desired output format" }
+              operation: { type: "string", enum: ["convert", "extract_text", "compress", "merge", "split", "analyze", "ocr", "watermark"] },
+              output_format: { type: "string", description: "Desired output format" },
+              options: { type: "object", description: "Operation-specific options" }
             },
             required: ["file_path", "operation"]
           }
@@ -230,9 +305,11 @@ serve(async (req) => {
             type: "object",
             properties: {
               table: { type: "string", description: "Database table name" },
-              operation: { type: "string", enum: ["select", "insert", "update", "delete", "aggregate"] },
+              operation: { type: "string", enum: ["select", "insert", "update", "delete", "aggregate", "join", "raw_sql"] },
               filters: { type: "object", description: "Query filters and conditions" },
-              fields: { type: "array", items: { type: "string" }, description: "Fields to operate on" }
+              fields: { type: "array", items: { type: "string" }, description: "Fields to operate on" },
+              order_by: { type: "string", description: "Field to order results by" },
+              limit: { type: "number", description: "Maximum results to return" }
             },
             required: ["table", "operation"]
           }
@@ -247,8 +324,9 @@ serve(async (req) => {
             type: "object",
             properties: {
               prompt: { type: "string", description: "Description of the image to generate" },
-              style: { type: "string", enum: ["realistic", "artistic", "logo", "illustration", "photo"] },
-              dimensions: { type: "string", description: "Image dimensions (e.g., 1024x1024)" }
+              style: { type: "string", enum: ["realistic", "artistic", "logo", "illustration", "photo", "3d", "anime"] },
+              dimensions: { type: "string", description: "Image dimensions (e.g., 1024x1024)" },
+              model: { type: "string", description: "Image model to use" }
             },
             required: ["prompt"]
           }
@@ -266,7 +344,8 @@ serve(async (req) => {
               subject: { type: "string", description: "Email subject line" },
               body: { type: "string", description: "Email content" },
               template: { type: "string", description: "Email template name" },
-              attachments: { type: "array", items: { type: "string" }, description: "File paths for attachments" }
+              attachments: { type: "array", items: { type: "string" }, description: "File paths for attachments" },
+              schedule: { type: "string", description: "When to send (ISO datetime or 'now')" }
             },
             required: ["to", "subject", "body"]
           }
@@ -275,28 +354,43 @@ serve(async (req) => {
       {
         type: "function",
         function: {
-          name: "chatbot_responder",
-          description: "Generate intelligent responses for customer support chatbots and conversational AI.",
+          name: "request_user_input",
+          description: "Ask the user for required information that is missing to complete the task.",
           parameters: {
             type: "object",
             properties: {
-              user_message: { type: "string", description: "User's message or query" },
-              context: { type: "object", description: "Conversation context and history" },
-              intent: { type: "string", description: "Detected intent of the message" },
-              knowledge_base: { type: "string", description: "Knowledge base to reference" }
+              question: { type: "string", description: "The question to ask the user" },
+              input_type: { type: "string", enum: ["text", "number", "url", "email", "file", "selection", "confirmation"], description: "Type of input expected" },
+              options: { type: "array", items: { type: "string" }, description: "Options for selection type" },
+              required: { type: "boolean", description: "Whether this input is required" },
+              default_value: { type: "string", description: "Default value if user skips" }
             },
-            required: ["user_message"]
+            required: ["question", "input_type"]
           }
         }
       }
     ];
+
+    // Build automation context if provided
+    let automationContext = '';
+    if (automationConfig) {
+      automationContext = `
+**AUTOMATION CONTEXT:**
+- Name: ${automationConfig.name || 'Custom Automation'}
+- Type: ${automationConfig.type || 'general'}
+- Description: ${automationConfig.description || 'No description provided'}
+- Configuration: ${JSON.stringify(automationConfig.config || {})}
+
+You MUST follow the automation configuration above. Execute the steps as defined.
+`;
+    }
 
     // Create log entry
     const logEntry = {
       user_id: userId,
       task_type: taskType,
       status: 'processing',
-      input_data: { prompt, taskType, model: apiModel },
+      input_data: { prompt, taskType, model: apiModel, automationConfig },
       model_used: apiModel,
     };
 
@@ -308,6 +402,56 @@ serve(async (req) => {
 
     const logId = logData?.id;
 
+    // Enhanced system prompt
+    const systemPrompt = `You are an advanced Admin Automation Agent for Stellarc Dynamics with comprehensive capabilities.
+
+**CRITICAL INSTRUCTIONS:**
+1. ALWAYS follow the exact instructions provided in automation configurations
+2. If you need ANY information to complete a task that wasn't provided, you MUST use the "request_user_input" tool to ask the user
+3. Do NOT make assumptions about missing data - always ask
+4. Execute tasks step-by-step and report progress
+5. If an automation has specific steps defined, follow them in order
+
+${automationContext}
+
+**AVAILABLE CAPABILITIES:**
+
+**Web & Browser Automation:**
+- web_scraper: Extract data from any website (text, tables, links, images)
+- browser_automation: Full Playwright browser control (navigate, click, type, screenshot, forms)
+
+**MCP Server Connections:**
+- mcp_notion: Read/write Notion pages, databases, and blocks
+- mcp_github: Repository operations, issues, PRs, code management
+- mcp_slack: Messaging, channels, notifications
+
+**Content & Data:**
+- content_generator: Create articles, emails, social posts, code, documentation
+- data_analyzer: Statistical analysis, trends, predictions, sentiment analysis
+- file_processor: PDF, image, document conversion and manipulation
+
+**Integrations:**
+- api_integration: Connect to any REST API with auth support
+- database_query: Query and manipulate database records
+- email_sender: Automated email campaigns with templates
+- workflow_automator: Create automated business processes
+
+**Image Generation:**
+- image_generator: AI-powered image creation and editing
+
+**User Interaction:**
+- request_user_input: Ask user for missing information (ALWAYS use this when data is missing)
+
+**YOUR APPROACH:**
+1. Analyze the request and identify ALL required information
+2. If ANY information is missing, use request_user_input to ask the user
+3. Break complex tasks into steps
+4. Use appropriate tools for each step
+5. Report results clearly with actionable details
+6. Suggest optimizations and next steps
+
+REMEMBER: Never proceed with incomplete information. Always ask the user for clarification when needed.`;
+
     try {
       // Call AI API with comprehensive tools
       const response = await fetch(apiUrl, {
@@ -315,68 +459,18 @@ serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://stellarcdynamics.com',
+          'X-Title': 'Stellarc Dynamics Admin Agent',
         },
         body: JSON.stringify({
           model: apiModel,
           messages: [
-            {
-              role: 'system',
-              content: `You are an advanced Admin Automation Agent with comprehensive capabilities:
-
-**AI Agents & Conversational AI:**
-- Customer support chatbots with natural language understanding
-- Sales assistant agents for lead qualification and conversion
-- Content generation tools for marketing and communication
-- Data analysis agents for insights and reporting
-- Personal assistant AI for task management and scheduling
-
-**Automation Solutions:**
-- Business process automation and workflow optimization
-- API integration and development for seamless data exchange
-- Data processing and analytics with real-time insights
-- Custom automation tools tailored to specific needs
-- Legacy system integration and modernization
-
-**App Development:**
-- Cross-platform mobile and web application development
-- React Native, Flutter, and modern web technologies
-- High-performance, secure applications
-- User-centric design and intuitive interfaces
-
-**Website Development:**
-- Custom responsive website design and development
-- E-commerce stores with payment processing
-- SEO-optimized sites with fast performance
-- Content management systems and blogs
-- Landing pages and portfolio sites
-
-**Available Tools:**
-You have access to 10 powerful tools to execute tasks:
-1. web_scraper - Extract data from any website
-2. api_integration - Connect to external services and APIs
-3. content_generator - Create articles, emails, posts, code
-4. data_analyzer - Analyze data and generate insights
-5. workflow_automator - Create automated business processes
-6. file_processor - Handle documents, PDFs, images
-7. database_query - Manage database operations
-8. image_generator - Create AI-generated images
-9. email_sender - Send automated emails
-10. chatbot_responder - Generate intelligent chat responses
-
-**Your Approach:**
-1. Analyze the user's request and identify the best tool(s) to use
-2. Break complex tasks into steps using multiple tools if needed
-3. Provide clear explanations of what you're doing
-4. Return actionable results with implementation details
-5. Suggest improvements and optimizations
-
-Always use the appropriate tool for the task. Provide detailed, step-by-step execution plans.`
-            },
+            { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt }
           ],
           tools: tools,
           tool_choice: "auto",
-          temperature: 0.2,
+          temperature: 0.3,
           max_tokens: 4000,
         }),
       });

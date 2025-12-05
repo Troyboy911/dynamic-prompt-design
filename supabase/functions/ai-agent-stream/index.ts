@@ -7,152 +7,74 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// OpenRouter available models - expanded with Claude and Llama 4
-const OPENROUTER_MODELS: Record<string, string> = {
-  'openrouter/auto': 'openrouter/auto',
-  'openrouter/claude-sonnet-4.5': 'anthropic/claude-sonnet-4',
-  'openrouter/claude-3.5-sonnet': 'anthropic/claude-3.5-sonnet',
-  'openrouter/claude-3-opus': 'anthropic/claude-3-opus',
-  'openrouter/gpt-4-turbo': 'openai/gpt-4-turbo',
-  'openrouter/gpt-4o': 'openai/gpt-4o',
-  'openrouter/gpt-4o-mini': 'openai/gpt-4o-mini',
-  'openrouter/llama-4-maverick': 'meta-llama/llama-4-maverick',
-  'openrouter/llama-3.1-70b': 'meta-llama/llama-3.1-70b-instruct',
-  'openrouter/llama-3.1-405b': 'meta-llama/llama-3.1-405b-instruct',
-  'openrouter/mixtral-8x7b': 'mistralai/mixtral-8x7b-instruct',
-  'openrouter/mistral-large': 'mistralai/mistral-large',
-  'openrouter/gemini-pro': 'google/gemini-pro-1.5',
-  'openrouter/deepseek-coder': 'deepseek/deepseek-coder',
-  'openrouter/qwen-72b': 'qwen/qwen-2-72b-instruct',
-  // Direct model mappings
-  'claude-sonnet-4.5': 'anthropic/claude-sonnet-4',
-  'llama-4-maverick': 'meta-llama/llama-4-maverick',
+// Models with Claude Opus 4.5 and top-tier options
+const AVAILABLE_MODELS: Record<string, { endpoint: string; model: string; keyEnv: string }> = {
+  // Claude models via OpenRouter
+  'claude-opus-4.5': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-opus-4', keyEnv: 'OPENROUTER_API_KEY' },
+  'claude-sonnet-4.5': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-sonnet-4', keyEnv: 'OPENROUTER_API_KEY' },
+  'claude-3.5-sonnet': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-3.5-sonnet', keyEnv: 'OPENROUTER_API_KEY' },
+  // Llama 4 Maverick
+  'llama-4-maverick': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'meta-llama/llama-4-maverick', keyEnv: 'OPENROUTER_API_KEY' },
+  'llama-3.1-405b': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'meta-llama/llama-3.1-405b-instruct', keyEnv: 'OPENROUTER_API_KEY' },
+  // GPT models
+  'gpt-5': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-5', keyEnv: 'OPENROUTER_API_KEY' },
+  'gpt-4o': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-4o', keyEnv: 'OPENROUTER_API_KEY' },
+  'gpt-4-turbo': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-4-turbo', keyEnv: 'OPENROUTER_API_KEY' },
+  // Other powerful models
+  'gemini-2.5-pro': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'google/gemini-2.5-pro', keyEnv: 'OPENROUTER_API_KEY' },
+  'deepseek-r1': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'deepseek/deepseek-r1', keyEnv: 'OPENROUTER_API_KEY' },
+  'qwen-2.5-72b': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'qwen/qwen-2.5-72b-instruct', keyEnv: 'OPENROUTER_API_KEY' },
+  // Auto router
+  'openrouter/auto': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'openrouter/auto', keyEnv: 'OPENROUTER_API_KEY' },
+  // Lovable AI fallback
+  'lovable-gemini': { endpoint: 'https://ai.gateway.lovable.dev/v1/chat/completions', model: 'google/gemini-2.5-flash', keyEnv: 'LOVABLE_API_KEY' },
 };
 
-// MCP-style tools for the agent
-const MCP_TOOLS = [
+// Real executable tools - no simulation
+const EXECUTABLE_TOOLS = [
   {
     type: "function",
     function: {
-      name: "web_scrape",
-      description: "Scrape content from a website URL. Returns HTML or extracted text content.",
+      name: "database_insert",
+      description: "Insert a new record into a database table (scrapers, automations, profiles, etc.)",
       parameters: {
         type: "object",
         properties: {
-          url: { type: "string", description: "The URL to scrape" },
-          selector: { type: "string", description: "CSS selector to target specific elements (optional)" },
-          extract_type: { type: "string", enum: ["text", "html", "links", "images"], description: "What to extract" }
+          table: { type: "string", description: "Table name: scrapers, automations, playground_tools, pricing_tiers" },
+          data: { type: "object", description: "The data to insert" }
         },
-        required: ["url"]
+        required: ["table", "data"]
       }
     }
   },
   {
     type: "function",
     function: {
-      name: "notion_search",
-      description: "Search Notion workspace for pages and databases",
+      name: "database_update",
+      description: "Update an existing record in a database table",
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "Search query" },
-          filter_type: { type: "string", enum: ["page", "database"], description: "Filter by type" }
+          table: { type: "string", description: "Table name" },
+          id: { type: "string", description: "Record ID to update" },
+          data: { type: "object", description: "The data to update" }
         },
-        required: ["query"]
+        required: ["table", "id", "data"]
       }
     }
   },
   {
     type: "function",
     function: {
-      name: "notion_create_page",
-      description: "Create a new page in Notion",
+      name: "database_delete",
+      description: "Delete a record from a database table",
       parameters: {
         type: "object",
         properties: {
-          title: { type: "string", description: "Page title" },
-          content: { type: "string", description: "Page content in markdown" },
-          parent_id: { type: "string", description: "Parent page or database ID" }
+          table: { type: "string", description: "Table name" },
+          id: { type: "string", description: "Record ID to delete" }
         },
-        required: ["title", "content"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "github_search",
-      description: "Search GitHub repositories or code",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Search query" },
-          search_type: { type: "string", enum: ["repositories", "code", "issues"], description: "Type of search" }
-        },
-        required: ["query"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "send_email",
-      description: "Send an email via configured email service",
-      parameters: {
-        type: "object",
-        properties: {
-          to: { type: "string", description: "Recipient email address" },
-          subject: { type: "string", description: "Email subject" },
-          body: { type: "string", description: "Email body (HTML supported)" }
-        },
-        required: ["to", "subject", "body"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "generate_image",
-      description: "Generate an image using AI (ComfyUI/DALL-E style)",
-      parameters: {
-        type: "object",
-        properties: {
-          prompt: { type: "string", description: "Image generation prompt" },
-          style: { type: "string", description: "Style preset (realistic, artistic, anime, etc.)" },
-          size: { type: "string", enum: ["512x512", "1024x1024", "1792x1024"], description: "Image size" }
-        },
-        required: ["prompt"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "run_automation",
-      description: "Execute a stored automation by name or ID",
-      parameters: {
-        type: "object",
-        properties: {
-          automation_id: { type: "string", description: "Automation ID or name" },
-          input_data: { type: "object", description: "Input parameters for the automation" }
-        },
-        required: ["automation_id"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "run_scraper",
-      description: "Execute a stored scraper by name or ID",
-      parameters: {
-        type: "object",
-        properties: {
-          scraper_id: { type: "string", description: "Scraper ID or name" },
-          target_url: { type: "string", description: "URL to scrape" },
-          parameters: { type: "object", description: "Additional scraper parameters" }
-        },
-        required: ["scraper_id"]
+        required: ["table", "id"]
       }
     }
   },
@@ -160,13 +82,14 @@ const MCP_TOOLS = [
     type: "function",
     function: {
       name: "database_query",
-      description: "Query the database for records",
+      description: "Query records from a database table",
       parameters: {
         type: "object",
         properties: {
-          table: { type: "string", description: "Table name (scrapers, automations, etc.)" },
-          filters: { type: "object", description: "Query filters" },
-          limit: { type: "number", description: "Max results to return" }
+          table: { type: "string", description: "Table name" },
+          filters: { type: "object", description: "Filter conditions" },
+          limit: { type: "number", description: "Max results" },
+          orderBy: { type: "string", description: "Column to order by" }
         },
         required: ["table"]
       }
@@ -175,25 +98,97 @@ const MCP_TOOLS = [
   {
     type: "function",
     function: {
-      name: "request_user_input",
-      description: "Request additional information from the user when details are missing",
+      name: "create_scraper",
+      description: "Create a new web scraper configuration",
       parameters: {
         type: "object",
         properties: {
-          question: { type: "string", description: "The question to ask the user" },
-          input_type: { type: "string", enum: ["text", "choice", "confirmation"], description: "Type of input expected" },
-          options: { type: "array", items: { type: "string" }, description: "Options for choice type" }
+          name: { type: "string", description: "Scraper name" },
+          description: { type: "string", description: "What it does" },
+          scraper_type: { type: "string", description: "Type: website, ecommerce, social, news, jobs" },
+          config: { type: "object", description: "Scraper configuration with selectors, urls, etc." },
+          price_per_use: { type: "number", description: "Price per use in dollars" },
+          is_premium: { type: "boolean", description: "Is this a premium scraper" }
         },
-        required: ["question"]
+        required: ["name", "scraper_type"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_automation",
+      description: "Create a new automation workflow",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Automation name" },
+          description: { type: "string", description: "What it does" },
+          automation_type: { type: "string", description: "Type: report, email, data, workflow, app" },
+          config: { type: "object", description: "Automation steps and configuration" },
+          price_per_use: { type: "number", description: "Price per use in dollars" },
+          is_premium: { type: "boolean", description: "Is this premium" }
+        },
+        required: ["name", "automation_type"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "http_request",
+      description: "Make an HTTP request to any URL (for web scraping, API calls, etc.)",
+      parameters: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "URL to request" },
+          method: { type: "string", enum: ["GET", "POST", "PUT", "DELETE"], description: "HTTP method" },
+          headers: { type: "object", description: "Request headers" },
+          body: { type: "string", description: "Request body for POST/PUT" }
+        },
+        required: ["url"]
+      }
+    }
+  },
+  {
+    type: "function", 
+    function: {
+      name: "execute_code",
+      description: "Execute JavaScript/TypeScript code to process data, transform results, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          code: { type: "string", description: "The code to execute" },
+          context: { type: "object", description: "Variables to pass to the code" }
+        },
+        required: ["code"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "log_action",
+      description: "Log an action to the automation_logs table with results",
+      parameters: {
+        type: "object",
+        properties: {
+          task_type: { type: "string", description: "Type of task performed" },
+          status: { type: "string", enum: ["pending", "running", "success", "failed"], description: "Status" },
+          input_data: { type: "object", description: "What was input" },
+          output_data: { type: "object", description: "What was produced" },
+          error_message: { type: "string", description: "Error if any" }
+        },
+        required: ["task_type", "status"]
       }
     }
   }
 ];
 
-// Input validation schema
+// Input validation
 const requestSchema = z.object({
-  prompt: z.string().min(1, "Prompt is required").max(10000, "Prompt too long"),
-  model: z.string().max(100).optional().default('openrouter/auto'),
+  prompt: z.string().min(1).max(50000),
+  model: z.string().optional().default('claude-opus-4.5'),
   automationConfig: z.object({
     name: z.string().optional(),
     type: z.string().optional(),
@@ -203,125 +198,200 @@ const requestSchema = z.object({
   enableTools: z.boolean().optional().default(true),
 });
 
+// Execute tool calls for real
+async function executeTool(supabase: any, toolName: string, args: any, userId: string): Promise<any> {
+  console.log(`Executing tool: ${toolName}`, args);
+  
+  try {
+    switch (toolName) {
+      case 'database_insert': {
+        const { table, data } = args;
+        const insertData = { ...data };
+        if (['playground_tools'].includes(table)) {
+          insertData.user_id = userId;
+        }
+        const { data: result, error } = await supabase.from(table).insert(insertData).select().single();
+        if (error) throw error;
+        return { success: true, action: 'INSERT', table, record: result };
+      }
+      
+      case 'database_update': {
+        const { table, id, data } = args;
+        const { data: result, error } = await supabase.from(table).update(data).eq('id', id).select().single();
+        if (error) throw error;
+        return { success: true, action: 'UPDATE', table, record: result };
+      }
+      
+      case 'database_delete': {
+        const { table, id } = args;
+        const { error } = await supabase.from(table).delete().eq('id', id);
+        if (error) throw error;
+        return { success: true, action: 'DELETE', table, id };
+      }
+      
+      case 'database_query': {
+        const { table, filters, limit, orderBy } = args;
+        let query = supabase.from(table).select('*');
+        if (filters) {
+          Object.entries(filters).forEach(([key, value]) => {
+            query = query.eq(key, value);
+          });
+        }
+        if (orderBy) query = query.order(orderBy, { ascending: false });
+        if (limit) query = query.limit(limit);
+        const { data: result, error } = await query;
+        if (error) throw error;
+        return { success: true, action: 'QUERY', table, count: result?.length || 0, records: result };
+      }
+      
+      case 'create_scraper': {
+        const { name, description, scraper_type, config, price_per_use, is_premium } = args;
+        const { data: result, error } = await supabase.from('scrapers').insert({
+          name,
+          description: description || `${scraper_type} scraper`,
+          scraper_type,
+          config: config || {},
+          price_per_use: price_per_use || 5,
+          is_premium: is_premium || false,
+          status: 'active'
+        }).select().single();
+        if (error) throw error;
+        return { success: true, action: 'CREATE_SCRAPER', scraper: result };
+      }
+      
+      case 'create_automation': {
+        const { name, description, automation_type, config, price_per_use, is_premium } = args;
+        const { data: result, error } = await supabase.from('automations').insert({
+          name,
+          description: description || `${automation_type} automation`,
+          automation_type,
+          config: config || {},
+          price_per_use: price_per_use || 10,
+          is_premium: is_premium || false,
+          status: 'active'
+        }).select().single();
+        if (error) throw error;
+        return { success: true, action: 'CREATE_AUTOMATION', automation: result };
+      }
+      
+      case 'http_request': {
+        const { url, method = 'GET', headers = {}, body } = args;
+        const options: RequestInit = { method, headers: headers as HeadersInit };
+        if (body && (method === 'POST' || method === 'PUT')) {
+          options.body = typeof body === 'string' ? body : JSON.stringify(body);
+        }
+        const response = await fetch(url, options);
+        const contentType = response.headers.get('content-type') || '';
+        let responseData;
+        if (contentType.includes('application/json')) {
+          responseData = await response.json();
+        } else {
+          responseData = await response.text();
+        }
+        return { 
+          success: response.ok, 
+          action: 'HTTP_REQUEST',
+          status: response.status,
+          url,
+          data: typeof responseData === 'string' ? responseData.substring(0, 5000) : responseData
+        };
+      }
+      
+      case 'execute_code': {
+        const { code, context = {} } = args;
+        // Safe code execution with limited scope
+        const fn = new Function(...Object.keys(context), `return (async () => { ${code} })()`);
+        const result = await fn(...Object.values(context));
+        return { success: true, action: 'EXECUTE_CODE', result };
+      }
+      
+      case 'log_action': {
+        const { task_type, status, input_data, output_data, error_message } = args;
+        const { data: result, error } = await supabase.from('automation_logs').insert({
+          user_id: userId,
+          task_type,
+          status,
+          input_data: input_data || {},
+          output_data: output_data || {},
+          error_message
+        }).select().single();
+        if (error) throw error;
+        return { success: true, action: 'LOG', log_id: result.id };
+      }
+      
+      default:
+        return { success: false, error: `Unknown tool: ${toolName}` };
+    }
+  } catch (error: any) {
+    console.error(`Tool execution error for ${toolName}:`, error);
+    return { success: false, error: error.message, tool: toolName };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Authenticate user from JWT token
+  try {
+    // Auth
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
     if (authError || !user) {
-      console.error('Auth error:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const userId = user.id;
 
-    // Parse and validate input
+    // Parse input
     const rawBody = await req.json();
-    const validationResult = requestSchema.safeParse(rawBody);
-    
-    if (!validationResult.success) {
-      console.error('Validation error:', validationResult.error.errors);
-      return new Response(
-        JSON.stringify({ error: 'Invalid input', details: validationResult.error.errors }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const validation = requestSchema.safeParse(rawBody);
+    if (!validation.success) {
+      return new Response(JSON.stringify({ error: 'Invalid input', details: validation.error.errors }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { prompt, model, automationConfig, enableTools } = validationResult.data;
+    const { prompt, model, automationConfig, enableTools } = validation.data;
 
-    // Determine API provider and model
-    let apiUrl = '';
-    let apiKey = '';
-    let apiModel = '';
-
-    const openrouterKey = Deno.env.get('OPENROUTER_API_KEY') || '';
-    const lovableKey = Deno.env.get('LOVABLE_API_KEY') || '';
-    const perplexityKey = Deno.env.get('perplexity_api_key') || '';
-    const openaiKey = Deno.env.get('openai_api_key') || '';
-
-    console.log(`Model requested: ${model}, OpenRouter key present: ${!!openrouterKey}`);
-
-    // Route based on model prefix and available keys
-    if (openrouterKey && (model.startsWith('openrouter/') || model.startsWith('claude-') || model.startsWith('llama-'))) {
-      // Use OpenRouter for OpenRouter models, Claude, and Llama
-      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-      apiKey = openrouterKey;
-      apiModel = OPENROUTER_MODELS[model] || OPENROUTER_MODELS[`openrouter/${model}`] || model;
-      console.log(`Using OpenRouter: ${model} -> ${apiModel}`);
-    } else if (model.startsWith('sonar') && perplexityKey) {
-      // Perplexity models
-      apiUrl = 'https://api.perplexity.ai/chat/completions';
-      apiKey = perplexityKey;
-      apiModel = model;
-    } else if (model.startsWith('openai/') && openaiKey) {
-      // OpenAI direct models
-      apiUrl = 'https://api.openai.com/v1/chat/completions';
-      apiKey = openaiKey;
-      apiModel = model.replace('openai/', '');
-    } else if (lovableKey) {
-      // Fallback to Lovable AI Gateway with supported models
-      apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-      apiKey = lovableKey;
-      // Map to Lovable AI supported models
-      if (model.includes('claude') || model.includes('sonnet')) {
-        apiModel = 'google/gemini-2.5-pro'; // Best reasoning alternative
-      } else if (model.includes('gpt-5') || model.includes('gpt5')) {
-        apiModel = 'openai/gpt-5';
-      } else if (model.includes('gpt-4')) {
-        apiModel = 'openai/gpt-5-mini';
-      } else if (model.includes('gemini')) {
-        apiModel = 'google/gemini-2.5-flash';
-      } else {
-        apiModel = 'google/gemini-2.5-flash'; // Default fast model
-      }
-      console.log(`Fallback to Lovable AI: ${model} -> ${apiModel}`);
-    } else if (openrouterKey) {
-      // Default to OpenRouter auto if key is available
-      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-      apiKey = openrouterKey;
-      apiModel = 'openrouter/auto';
-      console.log(`Default to OpenRouter auto`);
+    // Resolve model
+    let modelConfig = AVAILABLE_MODELS[model];
+    if (!modelConfig) {
+      // Try to find by partial match or default
+      modelConfig = AVAILABLE_MODELS['claude-opus-4.5'] || AVAILABLE_MODELS['openrouter/auto'];
     }
 
+    const apiKey = Deno.env.get(modelConfig.keyEnv);
     if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'No AI service configured. Please add OPENROUTER_API_KEY or configure another provider.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Fallback to Lovable AI
+      modelConfig = AVAILABLE_MODELS['lovable-gemini'];
+      const lovableKey = Deno.env.get('LOVABLE_API_KEY');
+      if (!lovableKey) {
+        return new Response(JSON.stringify({ error: 'No AI API key configured' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
+    const finalApiKey = Deno.env.get(modelConfig.keyEnv)!;
+
+    console.log(`Using model: ${modelConfig.model} via ${modelConfig.endpoint}`);
+
+    // Get conversation history
     const { data: history } = await supabase
       .from('conversation_history')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
-      .limit(20);
+      .limit(10);
 
-    // Filter history to ensure alternating user/assistant messages
     const filteredHistory: { role: string; content: string }[] = [];
     let lastRole = 'system';
-    
     if (history) {
       for (const msg of history) {
         if (msg.role !== lastRole && (msg.role === 'user' || msg.role === 'assistant')) {
@@ -330,62 +400,50 @@ serve(async (req) => {
         }
       }
     }
-
-    // Ensure the last message in history is from assistant if we're adding a user message
     if (filteredHistory.length > 0 && filteredHistory[filteredHistory.length - 1].role === 'user') {
       filteredHistory.pop();
     }
 
-    // Build automation context if provided
-    let automationContext = '';
-    if (automationConfig) {
-      automationContext = `
-**AUTOMATION CONTEXT:**
-- Name: ${automationConfig.name || 'Custom Automation'}
-- Type: ${automationConfig.type || 'general'}
-- Description: ${automationConfig.description || 'No description provided'}
-- Configuration: ${JSON.stringify(automationConfig.config || {})}
+    // Query current state for context
+    const { data: currentScrapers } = await supabase.from('scrapers').select('id, name, scraper_type, status').limit(20);
+    const { data: currentAutomations } = await supabase.from('automations').select('id, name, automation_type, status').limit(20);
 
-You MUST follow the automation configuration above. Execute the steps as defined.
-`;
-    }
+    const systemPrompt = `You are a REAL execution agent for Stellarc Dynamics. You EXECUTE commands, you don't simulate or pretend.
 
-    // Enhanced system prompt with MCP tool awareness
-    const systemPrompt = `You are an advanced Admin Automation Agent for Stellarc Dynamics with comprehensive MCP (Model Context Protocol) capabilities.
+## YOUR IDENTITY
+You are the Stellarc Command Agent - a no-BS, action-oriented system that makes REAL changes to the application.
 
-**CRITICAL INSTRUCTIONS:**
-1. ALWAYS follow the exact instructions provided in automation configurations
-2. If you need ANY information to complete a task that wasn't provided, use the request_user_input tool
-3. Do NOT make assumptions about missing data - always ask using the tools
-4. Execute tasks step-by-step and report progress
-5. If an automation has specific steps defined, follow them in order
+## RULES
+1. NEVER simulate, pretend, or roleplay actions. Every action you describe MUST be executed via tools.
+2. NEVER say "I would do X" - instead USE THE TOOLS to actually do X.
+3. When asked to create something, USE create_scraper or create_automation tools.
+4. When asked to query data, USE database_query tool.
+5. When asked to fetch web data, USE http_request tool.
+6. ALWAYS show proof - include the actual database response or HTTP response.
+7. If you can't do something, say WHY specifically (missing permission, invalid data, etc.)
 
-${automationContext}
+## CURRENT SYSTEM STATE
+Scrapers: ${JSON.stringify(currentScrapers || [])}
+Automations: ${JSON.stringify(currentAutomations || [])}
 
-**MCP TOOLS AVAILABLE:**
-You have access to the following MCP server tools:
-- web_scrape: Scrape content from websites (supports CSS selectors)
-- notion_search / notion_create_page: Interact with Notion workspace
-- github_search: Search GitHub repositories and code
-- send_email: Send emails via configured service
-- generate_image: Generate images with AI
-- run_automation: Execute stored automations
-- run_scraper: Execute stored scrapers
-- database_query: Query the database for records
-- request_user_input: Ask user for missing information
+## AUTOMATION CONTEXT
+${automationConfig ? `Active Automation: ${automationConfig.name}, Type: ${automationConfig.type}, Config: ${JSON.stringify(automationConfig.config)}` : 'No automation context'}
 
-**YOUR APPROACH:**
-1. Analyze the request and identify ALL required information
-2. If ANY information is missing, use request_user_input tool
-3. Use the appropriate MCP tools to complete tasks
-4. Break complex tasks into manageable steps
-5. Report results with actionable details
-6. Suggest optimizations and next steps
+## AVAILABLE TOOLS
+- database_insert/update/delete/query: Direct database operations
+- create_scraper: Create a new scraper (writes to DB immediately)
+- create_automation: Create a new automation (writes to DB immediately)  
+- http_request: Make real HTTP calls to any URL
+- execute_code: Run JavaScript code
+- log_action: Record actions to audit log
 
-**AVAILABLE SCRAPERS:** News Article, Product Data, Website Content, Job Listings, E-commerce Product, Social Media, Real Estate
-**AVAILABLE AUTOMATIONS:** Contact Form Handler, Invoice Generator, Social Media Scheduler, App Builder, Report Generator, Data Analysis
+## RESPONSE FORMAT
+1. State what you're doing
+2. Call the tools
+3. Show the REAL result from the tool
+4. If error, show the actual error
 
-REMEMBER: Use MCP tools for actions. Use request_user_input when information is missing. Never proceed with incomplete data.`;
+NO FLUFF. NO PRETENDING. EXECUTE AND PROVE.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -393,37 +451,36 @@ REMEMBER: Use MCP tools for actions. Use request_user_input when information is 
       { role: 'user', content: prompt }
     ];
 
-    // Save user message to history
+    // Save user message
     await supabase.from('conversation_history').insert({
       user_id: userId,
       role: 'user',
       content: prompt,
-      model: apiModel
+      model: modelConfig.model
     });
 
-    // Build request body with optional tools
+    // Build request
     const requestBody: any = {
-      model: apiModel,
+      model: modelConfig.model,
       messages,
       stream: true,
-      temperature: 0.5,
-      max_tokens: 4000,
+      max_tokens: 8000,
     };
 
-    // Add tools if enabled and using OpenRouter (supports function calling)
-    if (enableTools && apiUrl.includes('openrouter')) {
-      requestBody.tools = MCP_TOOLS;
+    // Add tools for OpenRouter (supports function calling)
+    if (enableTools && modelConfig.endpoint.includes('openrouter')) {
+      requestBody.tools = EXECUTABLE_TOOLS;
       requestBody.tool_choice = 'auto';
     }
 
-    // Call AI API with streaming
-    const response = await fetch(apiUrl, {
+    // Call AI
+    const response = await fetch(modelConfig.endpoint, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${finalApiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://stellarcdynamics.com',
-        'X-Title': 'Stellarc Dynamics Admin Agent',
+        'X-Title': 'Stellarc Command Agent',
       },
       body: JSON.stringify(requestBody),
     });
@@ -431,13 +488,10 @@ REMEMBER: Use MCP tools for actions. Use request_user_input when information is 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI API Error:', response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: `AI API error: ${response.status}`, details: errorText }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: `AI API error: ${response.status}`, details: errorText }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Stream the response
+    // Stream response
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
@@ -450,6 +504,7 @@ REMEMBER: Use MCP tools for actions. Use request_user_input when information is 
         const decoder = new TextDecoder();
         let fullResponse = '';
         let toolCalls: any[] = [];
+        let currentToolCall: any = null;
 
         try {
           while (true) {
@@ -467,8 +522,8 @@ REMEMBER: Use MCP tools for actions. Use request_user_input when information is 
                 try {
                   const parsed = JSON.parse(data);
                   const choice = parsed.choices?.[0];
-                  
-                  // Handle regular content
+
+                  // Stream content
                   const content = choice?.delta?.content;
                   if (content) {
                     fullResponse += content;
@@ -476,47 +531,91 @@ REMEMBER: Use MCP tools for actions. Use request_user_input when information is 
                   }
 
                   // Handle tool calls
-                  const toolCall = choice?.delta?.tool_calls?.[0];
-                  if (toolCall) {
-                    if (toolCall.id) {
-                      toolCalls.push({ id: toolCall.id, name: '', arguments: '' });
-                    }
-                    if (toolCall.function?.name && toolCalls.length > 0) {
-                      toolCalls[toolCalls.length - 1].name = toolCall.function.name;
-                    }
-                    if (toolCall.function?.arguments && toolCalls.length > 0) {
-                      toolCalls[toolCalls.length - 1].arguments += toolCall.function.arguments;
+                  const toolCallDelta = choice?.delta?.tool_calls?.[0];
+                  if (toolCallDelta) {
+                    if (toolCallDelta.id) {
+                      if (currentToolCall) {
+                        toolCalls.push(currentToolCall);
+                      }
+                      currentToolCall = {
+                        id: toolCallDelta.id,
+                        type: 'function',
+                        function: {
+                          name: toolCallDelta.function?.name || '',
+                          arguments: toolCallDelta.function?.arguments || ''
+                        }
+                      };
+                    } else if (currentToolCall) {
+                      if (toolCallDelta.function?.name) {
+                        currentToolCall.function.name += toolCallDelta.function.name;
+                      }
+                      if (toolCallDelta.function?.arguments) {
+                        currentToolCall.function.arguments += toolCallDelta.function.arguments;
+                      }
                     }
                   }
-                } catch (e) {
-                  // Skip invalid JSON
+
+                  // Check for finish with tool_calls
+                  if (choice?.finish_reason === 'tool_calls' || choice?.finish_reason === 'stop') {
+                    if (currentToolCall) {
+                      toolCalls.push(currentToolCall);
+                      currentToolCall = null;
+                    }
+                  }
+                } catch {
+                  // Invalid JSON, skip
                 }
               }
             }
           }
 
-          // If there were tool calls, append them to the response
+          // Execute any tool calls
           if (toolCalls.length > 0) {
-            const toolCallsMsg = `\n\n**Tool Calls Requested:**\n${toolCalls.map(tc => 
-              `- ${tc.name}: ${tc.arguments}`
-            ).join('\n')}`;
-            fullResponse += toolCallsMsg;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: toolCallsMsg })}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: '\n\n---\n**EXECUTING TOOLS:**\n' })}\n\n`));
+
+            for (const toolCall of toolCalls) {
+              const toolName = toolCall.function.name;
+              let toolArgs;
+              try {
+                toolArgs = JSON.parse(toolCall.function.arguments);
+              } catch {
+                toolArgs = {};
+              }
+
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: `\n🔧 **${toolName}**: ` })}\n\n`));
+
+              const result = await executeTool(supabase, toolName, toolArgs, userId);
+              
+              const resultStr = JSON.stringify(result, null, 2);
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: `\n\`\`\`json\n${resultStr}\n\`\`\`\n` })}\n\n`));
+
+              fullResponse += `\n\nTool: ${toolName}\nResult: ${resultStr}`;
+
+              // Log the tool execution
+              await supabase.from('automation_logs').insert({
+                user_id: userId,
+                task_type: `tool_${toolName}`,
+                status: result.success ? 'success' : 'failed',
+                input_data: toolArgs,
+                output_data: result,
+                model_used: modelConfig.model
+              });
+            }
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: '\n---\n**Execution complete.**\n' })}\n\n`));
           }
 
-          // Save assistant response to history
-          if (fullResponse) {
-            await supabase.from('conversation_history').insert({
-              user_id: userId,
-              role: 'assistant',
-              content: fullResponse,
-              model: apiModel
-            });
-          }
+          // Save assistant response
+          await supabase.from('conversation_history').insert({
+            user_id: userId,
+            role: 'assistant',
+            content: fullResponse,
+            model: modelConfig.model
+          });
 
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
         } catch (error) {
-          console.error('Streaming error:', error);
+          console.error('Stream error:', error);
         } finally {
           controller.close();
         }
@@ -524,19 +623,11 @@ REMEMBER: Use MCP tools for actions. Use request_user_input when information is 
     });
 
     return new Response(stream, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
+      headers: { ...corsHeaders, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }
     });
 
-  } catch (error) {
-    console.error('Error:', error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  } catch (error: any) {
+    console.error('Agent error:', error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

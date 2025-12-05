@@ -89,11 +89,23 @@ const MCPServersTab = () => {
       description: 'Playwright-powered browser control for web automation and scraping',
       icon: <Globe className="w-6 h-6" />,
       provider: 'playwright',
-      enabled: true,
+      enabled: false,
       apiKeyName: '',
       apiKeyConfigured: true,
-      status: 'connected',
+      status: 'disconnected',
       capabilities: ['Navigation', 'Form Filling', 'Screenshots', 'Data Extraction']
+    },
+    {
+      id: 'n8n',
+      name: 'n8n Workflows',
+      description: 'Connect to n8n workflow automation platform for advanced automations and integrations',
+      icon: <Server className="w-6 h-6" />,
+      provider: 'n8n',
+      enabled: false,
+      apiKeyName: 'n8n_webhook_url',
+      apiKeyConfigured: false,
+      status: 'disconnected',
+      capabilities: ['Workflow Execution', 'Multi-App Integration', 'Custom Automations', 'Data Pipelines']
     }
   ]);
 
@@ -339,6 +351,7 @@ const MCPServersTab = () => {
               { name: 'API Integration', enabled: true },
               { name: 'Notion MCP', enabled: servers.find(s => s.id === 'notion')?.enabled },
               { name: 'GitHub MCP', enabled: servers.find(s => s.id === 'github')?.enabled },
+              { name: 'n8n Workflows', enabled: servers.find(s => s.id === 'n8n')?.enabled },
               { name: 'Content Generator', enabled: true },
               { name: 'Data Analyzer', enabled: true },
               { name: 'Workflow Automator', enabled: true },

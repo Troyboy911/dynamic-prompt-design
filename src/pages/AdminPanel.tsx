@@ -89,7 +89,7 @@ const AdminPanel = () => {
   const [agentResponse, setAgentResponse] = useState("");
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("openrouter/auto");
+  const [selectedModel, setSelectedModel] = useState("claude-opus-4.5");
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
   const [scrapers, setScrapers] = useState<Scraper[]>([]);
   const [automations, setAutomations] = useState<Automation[]>([]);
@@ -844,24 +844,19 @@ const AdminPanel = () => {
                         <SelectValue placeholder="Select AI model" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="openrouter/auto">OpenRouter Auto (Best Available)</SelectItem>
-                        <SelectItem value="openrouter/claude-sonnet-4.5">Claude Sonnet 4.5</SelectItem>
-                        <SelectItem value="openrouter/claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
-                        <SelectItem value="openrouter/claude-3-opus">Claude 3 Opus</SelectItem>
-                        <SelectItem value="openrouter/gpt-4o">GPT-4o</SelectItem>
-                        <SelectItem value="openrouter/gpt-4o-mini">GPT-4o Mini</SelectItem>
-                        <SelectItem value="openrouter/gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                        <SelectItem value="openrouter/llama-4-maverick">Llama 4 Maverick</SelectItem>
-                        <SelectItem value="openrouter/llama-3.1-405b">Llama 3.1 405B</SelectItem>
-                        <SelectItem value="openrouter/llama-3.1-70b">Llama 3.1 70B</SelectItem>
-                        <SelectItem value="openrouter/mistral-large">Mistral Large</SelectItem>
-                        <SelectItem value="openrouter/mixtral-8x7b">Mixtral 8x7B</SelectItem>
-                        <SelectItem value="openrouter/gemini-pro">Gemini Pro 1.5</SelectItem>
-                        <SelectItem value="openrouter/deepseek-coder">DeepSeek Coder</SelectItem>
-                        <SelectItem value="openrouter/qwen-72b">Qwen 2 72B</SelectItem>
-                        <SelectItem value="openrouter/comfyui">ComfyUI (Image Gen)</SelectItem>
-                        <SelectItem value="gemini-2.5-flash">Lovable AI (Gemini Flash)</SelectItem>
-                        <SelectItem value="sonar-reasoning-pro">Perplexity Reasoning Pro</SelectItem>
+                        <SelectItem value="claude-opus-4.5">🧠 Claude Opus 4.5 (Most Powerful)</SelectItem>
+                        <SelectItem value="claude-sonnet-4.5">Claude Sonnet 4.5</SelectItem>
+                        <SelectItem value="claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                        <SelectItem value="gpt-5">GPT-5</SelectItem>
+                        <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                        <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                        <SelectItem value="llama-4-maverick">Llama 4 Maverick</SelectItem>
+                        <SelectItem value="llama-3.1-405b">Llama 3.1 405B</SelectItem>
+                        <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+                        <SelectItem value="deepseek-r1">DeepSeek R1 (Reasoning)</SelectItem>
+                        <SelectItem value="qwen-2.5-72b">Qwen 2.5 72B</SelectItem>
+                        <SelectItem value="openrouter/auto">OpenRouter Auto</SelectItem>
+                        <SelectItem value="lovable-gemini">Lovable AI (Fast)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

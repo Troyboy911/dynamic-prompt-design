@@ -54,20 +54,23 @@ serve(async (req) => {
       );
     }
 
-    // Check if user has appropriate role (admin or user)
+    // Check if user has admin role - AI agent is admin-only
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .in('role', ['admin', 'user']);
+      .eq('role', 'admin')
+      .single();
 
-    if (roleError || !roleData || roleData.length === 0) {
-      console.error('Role check error:', roleError);
+    if (roleError || !roleData) {
+      console.error('Admin role check failed:', roleError);
       return new Response(
-        JSON.stringify({ error: 'Access denied: Insufficient permissions' }),
+        JSON.stringify({ error: 'Access denied: Admin role required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('Admin access verified for user:', user.id);
 
     const userId = user.id;
     const { prompt, taskType = 'general', model = 'openrouter/auto', automationConfig } = await req.json();

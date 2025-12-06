@@ -352,6 +352,24 @@ serve(async (req) => {
 
     const userId = user.id;
 
+    // Verify admin role - AI agent is admin-only
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .single();
+
+    if (roleError || !roleData) {
+      console.error('Admin role check failed for user:', userId, roleError);
+      return new Response(
+        JSON.stringify({ error: 'Access denied: Admin role required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Admin access verified for user:', userId);
+
     // Parse input
     const rawBody = await req.json();
     const validation = requestSchema.safeParse(rawBody);

@@ -7,8 +7,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Models with Claude Opus 4.5 and top-tier options
+// Models with Claude Opus 4.5, AnythingLLM, and top-tier options
 const AVAILABLE_MODELS: Record<string, { endpoint: string; model: string; keyEnv: string }> = {
+  // AnythingLLM - Local or hosted LLM
+  'anythingllm': { endpoint: 'ANYTHINGLLM_ENDPOINT', model: 'anythingllm', keyEnv: 'ANYTHINGLLM_API_KEY' },
   // Claude models via OpenRouter
   'claude-opus-4.5': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-opus-4', keyEnv: 'OPENROUTER_API_KEY' },
   'claude-sonnet-4.5': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-sonnet-4', keyEnv: 'OPENROUTER_API_KEY' },
@@ -29,6 +31,19 @@ const AVAILABLE_MODELS: Record<string, { endpoint: string; model: string; keyEnv
   // Lovable AI fallback
   'lovable-gemini': { endpoint: 'https://ai.gateway.lovable.dev/v1/chat/completions', model: 'google/gemini-2.5-flash', keyEnv: 'LOVABLE_API_KEY' },
 };
+
+// SSRF protection - blocked hosts
+const BLOCKED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '169.254.169.254', '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.', '192.168.', 'metadata.google.internal'];
+
+function isBlockedUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    const hostname = url.hostname.toLowerCase();
+    return BLOCKED_HOSTS.some(blocked => hostname === blocked || hostname.startsWith(blocked) || hostname.endsWith('.' + blocked));
+  } catch {
+    return true; // Invalid URLs are blocked
+  }
+}
 
 // Real executable tools - no simulation
 const EXECUTABLE_TOOLS = [
@@ -137,31 +152,16 @@ const EXECUTABLE_TOOLS = [
     type: "function",
     function: {
       name: "http_request",
-      description: "Make an HTTP request to any URL (for web scraping, API calls, etc.)",
+      description: "Make an HTTP request to external URLs only (blocked: localhost, internal IPs, metadata endpoints)",
       parameters: {
         type: "object",
         properties: {
-          url: { type: "string", description: "URL to request" },
+          url: { type: "string", description: "URL to request (must be external, public URL)" },
           method: { type: "string", enum: ["GET", "POST", "PUT", "DELETE"], description: "HTTP method" },
           headers: { type: "object", description: "Request headers" },
           body: { type: "string", description: "Request body for POST/PUT" }
         },
         required: ["url"]
-      }
-    }
-  },
-  {
-    type: "function", 
-    function: {
-      name: "execute_code",
-      description: "Execute JavaScript/TypeScript code to process data, transform results, etc.",
-      parameters: {
-        type: "object",
-        properties: {
-          code: { type: "string", description: "The code to execute" },
-          context: { type: "object", description: "Variables to pass to the code" }
-        },
-        required: ["code"]
       }
     }
   },
@@ -276,6 +276,16 @@ async function executeTool(supabase: any, toolName: string, args: any, userId: s
       
       case 'http_request': {
         const { url, method = 'GET', headers = {}, body } = args;
+        
+        // SSRF protection - block internal/local URLs
+        if (isBlockedUrl(url)) {
+          return { 
+            success: false, 
+            error: 'Blocked URL: Internal/local addresses are not allowed for security reasons',
+            url 
+          };
+        }
+        
         const options: RequestInit = { method, headers: headers as HeadersInit };
         if (body && (method === 'POST' || method === 'PUT')) {
           options.body = typeof body === 'string' ? body : JSON.stringify(body);
@@ -295,14 +305,6 @@ async function executeTool(supabase: any, toolName: string, args: any, userId: s
           url,
           data: typeof responseData === 'string' ? responseData.substring(0, 5000) : responseData
         };
-      }
-      
-      case 'execute_code': {
-        const { code, context = {} } = args;
-        // Safe code execution with limited scope
-        const fn = new Function(...Object.keys(context), `return (async () => { ${code} })()`);
-        const result = await fn(...Object.values(context));
-        return { success: true, action: 'EXECUTE_CODE', result };
       }
       
       case 'log_action': {
@@ -386,10 +388,23 @@ serve(async (req) => {
       modelConfig = AVAILABLE_MODELS['claude-opus-4.5'] || AVAILABLE_MODELS['openrouter/auto'];
     }
 
+    // Handle AnythingLLM specially - requires endpoint URL from env
+    let finalEndpoint = modelConfig.endpoint;
+    if (model === 'anythingllm') {
+      const anythingLlmEndpoint = Deno.env.get('ANYTHINGLLM_ENDPOINT');
+      if (anythingLlmEndpoint) {
+        finalEndpoint = anythingLlmEndpoint;
+      } else {
+        // Default AnythingLLM API endpoint structure
+        finalEndpoint = 'http://localhost:3001/api/v1/chat/completions';
+      }
+    }
+
     const apiKey = Deno.env.get(modelConfig.keyEnv);
     if (!apiKey) {
       // Fallback to Lovable AI
       modelConfig = AVAILABLE_MODELS['lovable-gemini'];
+      finalEndpoint = modelConfig.endpoint;
       const lovableKey = Deno.env.get('LOVABLE_API_KEY');
       if (!lovableKey) {
         return new Response(JSON.stringify({ error: 'No AI API key configured' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -398,7 +413,7 @@ serve(async (req) => {
 
     const finalApiKey = Deno.env.get(modelConfig.keyEnv)!;
 
-    console.log(`Using model: ${modelConfig.model} via ${modelConfig.endpoint}`);
+    console.log(`Using model: ${modelConfig.model} via ${finalEndpoint}`);
 
     // Get conversation history
     const { data: history } = await supabase
@@ -485,14 +500,14 @@ NO FLUFF. NO PRETENDING. EXECUTE AND PROVE.`;
       max_tokens: 8000,
     };
 
-    // Add tools for OpenRouter (supports function calling)
-    if (enableTools && modelConfig.endpoint.includes('openrouter')) {
+    // Add tools for OpenRouter/OpenAI compatible endpoints (supports function calling)
+    if (enableTools && (finalEndpoint.includes('openrouter') || finalEndpoint.includes('openai') || model === 'anythingllm')) {
       requestBody.tools = EXECUTABLE_TOOLS;
       requestBody.tool_choice = 'auto';
     }
 
     // Call AI
-    const response = await fetch(modelConfig.endpoint, {
+    const response = await fetch(finalEndpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${finalApiKey}`,

@@ -844,6 +844,7 @@ const AdminPanel = () => {
                         <SelectValue placeholder="Select AI model" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="anythingllm">🔮 AnythingLLM (Local/Custom)</SelectItem>
                         <SelectItem value="claude-opus-4.5">🧠 Claude Opus 4.5 (Most Powerful)</SelectItem>
                         <SelectItem value="claude-sonnet-4.5">Claude Sonnet 4.5</SelectItem>
                         <SelectItem value="claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>

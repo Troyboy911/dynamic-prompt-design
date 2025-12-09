@@ -466,8 +466,7 @@ ${automationConfig ? `Active Automation: ${automationConfig.name}, Type: ${autom
 - database_insert/update/delete/query: Direct database operations
 - create_scraper: Create a new scraper (writes to DB immediately)
 - create_automation: Create a new automation (writes to DB immediately)  
-- http_request: Make real HTTP calls to any URL
-- execute_code: Run JavaScript code
+- http_request: Make real HTTP calls to external URLs (internal/local IPs blocked for security)
 - log_action: Record actions to audit log
 
 ## RESPONSE FORMAT

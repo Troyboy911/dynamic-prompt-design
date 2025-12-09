@@ -26,8 +26,8 @@ const AVAILABLE_MODELS: Record<string, { endpoint: string; model: string; keyEnv
   'gemini-2.5-pro': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'google/gemini-2.5-pro', keyEnv: 'OPENROUTER_API_KEY' },
   'deepseek-r1': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'deepseek/deepseek-r1', keyEnv: 'OPENROUTER_API_KEY' },
   'qwen-2.5-72b': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'qwen/qwen-2.5-72b-instruct', keyEnv: 'OPENROUTER_API_KEY' },
-  // Auto router
-  'openrouter/auto': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'openrouter/auto', keyEnv: 'OPENROUTER_API_KEY' },
+  // Auto router - uses Claude 3.5 Sonnet as reliable default
+  'openrouter/auto': { endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-3.5-sonnet', keyEnv: 'OPENROUTER_API_KEY' },
   // Lovable AI fallback
   'lovable-gemini': { endpoint: 'https://ai.gateway.lovable.dev/v1/chat/completions', model: 'google/gemini-2.5-flash', keyEnv: 'LOVABLE_API_KEY' },
 };

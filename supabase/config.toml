@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.execute-automation]
 verify_jwt = true
+
+[functions.anythingllm-webhook]
+verify_jwt = false

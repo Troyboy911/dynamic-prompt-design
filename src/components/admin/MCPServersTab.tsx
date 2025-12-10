@@ -117,6 +117,18 @@ const MCPServersTab = () => {
       apiKeyConfigured: false,
       status: 'disconnected',
       capabilities: ['Workflow Execution', 'Multi-App Integration', 'Custom Automations', 'Data Pipelines']
+    },
+    {
+      id: 'apify',
+      name: 'Apify',
+      description: 'Web scraping, automation, and data extraction platform with RAG web browser capabilities',
+      icon: <Globe className="w-6 h-6" />,
+      provider: 'apify',
+      enabled: false,
+      apiKeyName: 'apify_api_token',
+      apiKeyConfigured: false,
+      status: 'disconnected',
+      capabilities: ['Actors', 'Web Scraping', 'Data Storage', 'RAG Web Browser', 'Runs Management']
     }
   ]);
 
